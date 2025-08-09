@@ -45,19 +45,60 @@ class Terreno:
         self._generar_rios()
 
     def _generar_rios(self):
+        """Crea ríos con orientación vertical, horizontal o diagonal."""
+        direcciones = ["vertical", "horizontal", "diagonal"]
         for _ in range(self.num_rios):
-            x = random.randrange(self.ancho_tiles)
-            y = 0
-            while y < self.alto_tiles:
-                self.mapa[y][x] = "AGUA"
-                # Posible ensanche del río
-                if x > 0 and random.random() < 0.3:
-                    self.mapa[y][x - 1] = "AGUA"
-                if x < self.ancho_tiles - 1 and random.random() < 0.3:
-                    self.mapa[y][x + 1] = "AGUA"
-                x += random.choice([-1, 0, 1])
-                x = max(0, min(self.ancho_tiles - 1, x))
-                y += 1
+            orient = random.choice(direcciones)
+
+            if orient == "vertical":
+                x = random.randrange(self.ancho_tiles)
+                y = 0
+                while y < self.alto_tiles:
+                    self.mapa[y][x] = "AGUA"
+                    # Posible ensanche del río
+                    if x > 0 and random.random() < 0.3:
+                        self.mapa[y][x - 1] = "AGUA"
+                    if x < self.ancho_tiles - 1 and random.random() < 0.3:
+                        self.mapa[y][x + 1] = "AGUA"
+                    x += random.choice([-1, 0, 1])
+                    x = max(0, min(self.ancho_tiles - 1, x))
+                    y += 1
+
+            elif orient == "horizontal":
+                y = random.randrange(self.alto_tiles)
+                x = 0
+                while x < self.ancho_tiles:
+                    self.mapa[y][x] = "AGUA"
+                    if y > 0 and random.random() < 0.3:
+                        self.mapa[y - 1][x] = "AGUA"
+                    if y < self.alto_tiles - 1 and random.random() < 0.3:
+                        self.mapa[y + 1][x] = "AGUA"
+                    y += random.choice([-1, 0, 1])
+                    y = max(0, min(self.alto_tiles - 1, y))
+                    x += 1
+
+            else:  # diagonal
+                if random.choice([True, False]):
+                    x = 0
+                    dx_dir = 1
+                else:
+                    x = self.ancho_tiles - 1
+                    dx_dir = -1
+                y = 0
+                while 0 <= x < self.ancho_tiles and y < self.alto_tiles:
+                    self.mapa[y][x] = "AGUA"
+                    # Ensanche en celdas alrededor
+                    for dx_off, dy_off in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = x + dx_off, y + dy_off
+                        if (
+                            0 <= nx < self.ancho_tiles
+                            and 0 <= ny < self.alto_tiles
+                            and random.random() < 0.3
+                        ):
+                            self.mapa[ny][nx] = "AGUA"
+                    x += dx_dir + random.choice([-1, 0, 1])
+                    x = max(0, min(self.ancho_tiles - 1, x))
+                    y += 1
 
     def _color_tile(self, bloque, x, y):
         """Devuelve un color con variaciones oscuras para cada bloque."""
