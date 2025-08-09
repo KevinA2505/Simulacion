@@ -1,14 +1,21 @@
 import pygame
 import random
 
+
+def _clamp(valor, minimo=0, maximo=255):
+    """Mantiene un valor dentro del rango [minimo, maximo]."""
+    return max(minimo, min(maximo, valor))
+
 # Configuración básica
 ANCHO, ALTO = 800, 600
 ALTO_PANEL = 80
 TAM_CELDA = 20
 
-COLOR_SUELO   = (120, 200, 120)
-COLOR_PARED   = (100, 100, 100)
-COLOR_HUECO   = (0, 0, 0)
+# Colores base para cada tipo de terreno. Se utilizan como punto de partida
+# para generar variaciones que den un aspecto menos plano al mapa.
+COLOR_SUELO   = (90, 180, 90)     # Verde hierba
+COLOR_PARED   = (120, 120, 130)   # Piedra
+COLOR_HUECO   = (5, 5, 20)        # Vacío oscuro
 COLOR_PANEL   = (200, 200, 200)
 COLOR_TEXTO   = (20, 20, 20)
 
@@ -33,16 +40,34 @@ class Terreno:
                     fila.append("SUELO")
             self.mapa.append(fila)
 
+    def _color_tile(self, bloque, x, y):
+        """Devuelve un color con variaciones y gradientes según la posición."""
+        rnd = random.Random(x * 1000 + y * 100 + ord(bloque[0]))
+        if bloque == "SUELO":
+            # Variar el tono de verde y agregar un gradiente vertical.
+            grad = int(40 * y / self.alto_tiles)
+            r = _clamp(COLOR_SUELO[0] + rnd.randint(-20, 20))
+            g = _clamp(COLOR_SUELO[1] + grad + rnd.randint(-30, 30))
+            b = _clamp(COLOR_SUELO[2] + rnd.randint(-20, 20))
+            return (r, g, b)
+        elif bloque == "PARED":
+            # La piedra se oscurece ligeramente con la profundidad.
+            brillo = int(30 * (self.alto_tiles - y) / self.alto_tiles)
+            offset = rnd.randint(-15, 15) + brillo
+            return tuple(_clamp(c + offset) for c in COLOR_PARED)
+        else:  # HUECO
+            # Tonos azulados que se aclaran levemente en profundidad.
+            azul = int(50 * y / self.alto_tiles)
+            r = _clamp(COLOR_HUECO[0] + rnd.randint(-10, 10))
+            g = _clamp(COLOR_HUECO[1] + rnd.randint(-10, 10))
+            b = _clamp(COLOR_HUECO[2] + azul + rnd.randint(-10, 10))
+            return (r, g, b)
+
     def dibujar(self, surface):
         for y, fila in enumerate(self.mapa):
             for x, bloque in enumerate(fila):
                 pos = (x * TAM_CELDA, ALTO_PANEL + y * TAM_CELDA)
-                if bloque == "SUELO":
-                    color = COLOR_SUELO
-                elif bloque == "PARED":
-                    color = COLOR_PARED
-                else:  # HUECO
-                    color = COLOR_HUECO
+                color = self._color_tile(bloque, x, y)
                 pygame.draw.rect(surface, color, (*pos, TAM_CELDA, TAM_CELDA))
 
 
