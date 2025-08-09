@@ -71,6 +71,57 @@ class Terreno:
                 pygame.draw.rect(surface, color, (*pos, TAM_CELDA, TAM_CELDA))
 
 
+class Jugador:
+    def __init__(self, x, y, tamaño=TAM_CELDA - 4, velocidad=4):
+        self.rect = pygame.Rect(x, y, tamaño, tamaño)
+        self.velocidad = velocidad
+        self.color = (200, 50, 50)
+
+    def _bloque_en(self, px, py, terreno):
+        tile_x = int(px // TAM_CELDA)
+        tile_y = int((py - ALTO_PANEL) // TAM_CELDA)
+        if tile_y < 0:
+            return "PARED"
+        if 0 <= tile_x < terreno.ancho_tiles and 0 <= tile_y < terreno.alto_tiles:
+            return terreno.mapa[tile_y][tile_x]
+        return "PARED"
+
+    def _colisiona(self, rect, terreno):
+        puntos = [
+            rect.topleft,
+            (rect.right - 1, rect.top),
+            (rect.left, rect.bottom - 1),
+            (rect.right - 1, rect.bottom - 1),
+        ]
+        for px, py in puntos:
+            if self._bloque_en(px, py, terreno) in ("PARED", "HUECO"):
+                return True
+        return False
+
+    def mover(self, teclas, terreno):
+        dx = dy = 0
+        if teclas[pygame.K_LEFT]:
+            dx -= self.velocidad
+        if teclas[pygame.K_RIGHT]:
+            dx += self.velocidad
+        if teclas[pygame.K_UP]:
+            dy -= self.velocidad
+        if teclas[pygame.K_DOWN]:
+            dy += self.velocidad
+
+        if dx != 0:
+            nuevo = self.rect.move(dx, 0)
+            if not self._colisiona(nuevo, terreno):
+                self.rect = nuevo
+        if dy != 0:
+            nuevo = self.rect.move(0, dy)
+            if not self._colisiona(nuevo, terreno):
+                self.rect = nuevo
+
+    def dibujar(self, surface):
+        pygame.draw.rect(surface, self.color, self.rect)
+
+
 def dibujar_panel(surface, densidad):
     pygame.draw.rect(surface, COLOR_PANEL, (0, 0, ANCHO, ALTO_PANEL))
     fuente = pygame.font.SysFont(None, 30)
@@ -79,6 +130,14 @@ def dibujar_panel(surface, densidad):
         True, COLOR_TEXTO
     )
     surface.blit(texto, (10, 25))
+
+
+def posicion_inicial(terreno):
+    for y, fila in enumerate(terreno.mapa):
+        for x, bloque in enumerate(fila):
+            if bloque == "SUELO":
+                return x * TAM_CELDA, ALTO_PANEL + y * TAM_CELDA
+    return 0, ALTO_PANEL
 
 
 def main():
@@ -93,6 +152,8 @@ def main():
     densidad = 0.1
 
     terreno = Terreno(ancho_tiles, alto_tiles, densidad)
+    px, py = posicion_inicial(terreno)
+    jugador = Jugador(px, py)
 
     corriendo = True
     while corriendo:
@@ -102,18 +163,25 @@ def main():
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_r:          # Regenerar
                     terreno.generar()
+                    jugador.rect.topleft = posicion_inicial(terreno)
                 elif evento.key == pygame.K_PLUS or evento.key == pygame.K_EQUALS:
                     densidad = min(densidad + 0.05, 1.0)
                     terreno.densidad = densidad
                     terreno.generar()
+                    jugador.rect.topleft = posicion_inicial(terreno)
                 elif evento.key == pygame.K_MINUS:
                     densidad = max(densidad - 0.05, 0.0)
                     terreno.densidad = densidad
                     terreno.generar()
+                    jugador.rect.topleft = posicion_inicial(terreno)
+
+        teclas = pygame.key.get_pressed()
+        jugador.mover(teclas, terreno)
 
         pantalla.fill((0, 0, 0))
         dibujar_panel(pantalla, densidad)
         terreno.dibujar(pantalla)
+        jugador.dibujar(pantalla)
 
         pygame.display.flip()
         reloj.tick(30)
