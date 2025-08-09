@@ -8,7 +8,7 @@ def _clamp(valor, minimo=0, maximo=255):
 
 # Configuración básica
 ANCHO = 600                     # Área de terreno cuadrada
-ALTO_PANEL = 80
+ALTO_PANEL = 120
 ALTO = ALTO_PANEL + ANCHO       # Mantiene el terreno como un cuadrado
 TAM_CELDA = 20
 
@@ -190,10 +190,11 @@ def main():
         terreno.densidad = densidad
         regenerar()
 
+    y_botones = ALTO_PANEL // 2 - 20
     botones = [
-        Boton((10, 20, 40, 40), "-", densidad_menos),
-        Boton((60, 20, 40, 40), "+", densidad_mas),
-        Boton((120, 20, 120, 40), "Regenerar", regenerar),
+        Boton((10, y_botones, 40, 40), "-", densidad_menos),
+        Boton((60, y_botones, 40, 40), "+", densidad_mas),
+        Boton((120, y_botones, 120, 40), "Regenerar", regenerar),
     ]
 
     superficie_juego = pygame.Surface((ANCHO, ALTO))
