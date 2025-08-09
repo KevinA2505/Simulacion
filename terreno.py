@@ -18,10 +18,12 @@ COLOR_PANEL   = (200, 200, 200)
 COLOR_TEXTO   = (20, 20, 20)
 
 class Terreno:
-    def __init__(self, ancho_tiles, alto_tiles, densidad=0.1):
+    def __init__(self, ancho_tiles, alto_tiles, densidad=0.1, densidad_agua=0.1, densidad_bosque=0.1):
         self.ancho_tiles = ancho_tiles
         self.alto_tiles = alto_tiles
         self.densidad = densidad
+        self.densidad_agua = densidad_agua
+        self.densidad_bosque = densidad_bosque
         self.mapa = []
         self.generar()
 
@@ -34,6 +36,10 @@ class Terreno:
                 if rnd < self.densidad:
                     # Obstáculo: pared o hueco
                     fila.append(random.choice(["PARED", "HUECO"]))
+                elif rnd < self.densidad + self.densidad_agua:
+                    fila.append("AGUA")
+                elif rnd < self.densidad + self.densidad_agua + self.densidad_bosque:
+                    fila.append("BOSQUE")
                 else:
                     fila.append("SUELO")
             self.mapa.append(fila)
@@ -46,6 +52,12 @@ class Terreno:
         elif bloque == "PARED":
             base = (40, 40, 110)  # Azul oscuro
             return tuple(_clamp(base[i] + rnd.randint(-20, 20)) for i in range(3))
+        elif bloque == "AGUA":
+            base = (20, 70, 160)  # Azul agua
+            return tuple(_clamp(base[i] + rnd.randint(-15, 15)) for i in range(3))
+        elif bloque == "BOSQUE":
+            base = (20, 100, 20)  # Verde bosque
+            return tuple(_clamp(base[i] + rnd.randint(-15, 15)) for i in range(3))
         else:  # HUECO
             base = (70, 20, 90)  # Morado oscuro
             return tuple(_clamp(base[i] + rnd.randint(-20, 20)) for i in range(3))
@@ -131,13 +143,17 @@ class Boton:
         surface.blit(texto, texto.get_rect(center=self.rect.center))
 
 
-def dibujar_panel(surface, botones, densidad):
+def dibujar_panel(surface, botones, densidad, densidad_agua, densidad_bosque):
     pygame.draw.rect(surface, COLOR_PANEL, (0, 0, ANCHO, ALTO_PANEL))
     for boton in botones:
         boton.dibujar(surface)
     fuente = pygame.font.SysFont(None, 24)
-    texto = fuente.render(f"Densidad: {densidad:.2f}", True, COLOR_TEXTO)
+    texto = fuente.render(f"Obstáculos: {densidad:.2f}", True, COLOR_TEXTO)
     surface.blit(texto, (10, ALTO_PANEL - 30))
+    texto = fuente.render(f"Agua: {densidad_agua:.2f}", True, COLOR_TEXTO)
+    surface.blit(texto, (200, ALTO_PANEL - 30))
+    texto = fuente.render(f"Bosque: {densidad_bosque:.2f}", True, COLOR_TEXTO)
+    surface.blit(texto, (360, ALTO_PANEL - 30))
 
 
 def posicion_inicial(terreno):
@@ -158,8 +174,10 @@ def main():
     ancho_tiles = ANCHO // TAM_CELDA
     alto_tiles = ancho_tiles
     densidad = 0.1
+    densidad_agua = 0.1
+    densidad_bosque = 0.1
 
-    terreno = Terreno(ancho_tiles, alto_tiles, densidad)
+    terreno = Terreno(ancho_tiles, alto_tiles, densidad, densidad_agua, densidad_bosque)
     px, py = posicion_inicial(terreno)
     jugador = Jugador(px, py)
 
@@ -190,11 +208,39 @@ def main():
         terreno.densidad = densidad
         regenerar()
 
+    def densidad_agua_mas():
+        nonlocal densidad_agua
+        densidad_agua = min(densidad_agua + 0.05, 1.0)
+        terreno.densidad_agua = densidad_agua
+        regenerar()
+
+    def densidad_agua_menos():
+        nonlocal densidad_agua
+        densidad_agua = max(densidad_agua - 0.05, 0.0)
+        terreno.densidad_agua = densidad_agua
+        regenerar()
+
+    def densidad_bosque_mas():
+        nonlocal densidad_bosque
+        densidad_bosque = min(densidad_bosque + 0.05, 1.0)
+        terreno.densidad_bosque = densidad_bosque
+        regenerar()
+
+    def densidad_bosque_menos():
+        nonlocal densidad_bosque
+        densidad_bosque = max(densidad_bosque - 0.05, 0.0)
+        terreno.densidad_bosque = densidad_bosque
+        regenerar()
+
     y_botones = ALTO_PANEL // 2 - 20
     botones = [
         Boton((10, y_botones, 40, 40), "-", densidad_menos),
         Boton((60, y_botones, 40, 40), "+", densidad_mas),
-        Boton((120, y_botones, 120, 40), "Regenerar", regenerar),
+        Boton((140, y_botones, 40, 40), "A-", densidad_agua_menos),
+        Boton((190, y_botones, 40, 40), "A+", densidad_agua_mas),
+        Boton((270, y_botones, 40, 40), "B-", densidad_bosque_menos),
+        Boton((320, y_botones, 40, 40), "B+", densidad_bosque_mas),
+        Boton((380, y_botones, 120, 40), "Regenerar", regenerar),
     ]
 
     superficie_juego = pygame.Surface((ANCHO, ALTO))
@@ -239,7 +285,7 @@ def main():
                 offset_y = (evento.h - ALTO) // 2
                 ancho_tiles = ANCHO // TAM_CELDA
                 alto_tiles = ancho_tiles
-                terreno = Terreno(ancho_tiles, alto_tiles, densidad)
+                terreno = Terreno(ancho_tiles, alto_tiles, densidad, densidad_agua, densidad_bosque)
                 jugador.rect.topleft = posicion_inicial(terreno)
                 limitar_camara()
 
@@ -247,7 +293,7 @@ def main():
         jugador.mover(teclas, terreno)
 
         superficie_juego.fill((0, 0, 0))
-        dibujar_panel(superficie_juego, botones, densidad)
+        dibujar_panel(superficie_juego, botones, densidad, densidad_agua, densidad_bosque)
         terreno.dibujar(superficie_juego, cam_x, cam_y)
         jugador.dibujar(superficie_juego, cam_x, cam_y)
 
