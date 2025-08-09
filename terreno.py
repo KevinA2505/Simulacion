@@ -144,8 +144,9 @@ def posicion_inicial(terreno):
 
 
 def main():
+    global ANCHO, ALTO
     pygame.init()
-    pantalla = pygame.display.set_mode((ANCHO, ALTO))
+    pantalla = pygame.display.set_mode((ANCHO, ALTO), pygame.RESIZABLE)
     pygame.display.set_caption("Generador de Terreno 2D")
     reloj = pygame.time.Clock()
     fuente = pygame.font.SysFont(None, 24)  # Carga una fuente para el panel
@@ -161,6 +162,13 @@ def main():
     cam_x = cam_y = 0
     arrastrando = False
     ultimo_mouse = (0, 0)
+
+    def limitar_camara():
+        nonlocal cam_x, cam_y
+        min_cam_x = ANCHO - ancho_tiles * TAM_CELDA
+        min_cam_y = ALTO - (ALTO_PANEL + alto_tiles * TAM_CELDA)
+        cam_x = min(0, max(min_cam_x, cam_x))
+        cam_y = min(0, max(min_cam_y, cam_y))
 
     corriendo = True
     while corriendo:
@@ -193,6 +201,15 @@ def main():
                 cam_x += dx
                 cam_y += dy
                 ultimo_mouse = (mx, my)
+                limitar_camara()
+            elif evento.type == pygame.VIDEORESIZE:
+                ANCHO, ALTO = evento.w, evento.h
+                pantalla = pygame.display.set_mode((ANCHO, ALTO), pygame.RESIZABLE)
+                ancho_tiles = ANCHO // TAM_CELDA
+                alto_tiles = (ALTO - ALTO_PANEL) // TAM_CELDA
+                terreno = Terreno(ancho_tiles, alto_tiles, densidad)
+                jugador.rect.topleft = posicion_inicial(terreno)
+                limitar_camara()
 
         teclas = pygame.key.get_pressed()
         jugador.mover(teclas, terreno)
