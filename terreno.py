@@ -33,16 +33,44 @@ class Terreno:
         for _ in range(self.alto_tiles):
             fila = []
             for _ in range(self.ancho_tiles):
-                rnd = random.random()
-                if rnd < self.densidad:
-                    # Obstáculo: pared o hueco
-                    fila.append(random.choice(["PARED", "HUECO"]))
-                elif rnd < self.densidad + self.densidad_bosque:
+                # Genera suelo base y bosque según densidad_bosque
+                if random.random() < self.densidad_bosque:
                     fila.append("BOSQUE")
                 else:
                     fila.append("SUELO")
             self.mapa.append(fila)
+        self._generar_paredes()
         self._generar_rios()
+
+    def _generar_paredes(self):
+        """Genera paredes conectadas en grupos."""
+        total_celdas = self.ancho_tiles * self.alto_tiles
+        objetivo = int(total_celdas * self.densidad)
+        creadas = 0
+        intentos = 0
+        max_intentos = objetivo * 5 if objetivo > 0 else total_celdas
+        while creadas < objetivo and intentos < max_intentos:
+            intentos += 1
+            x = random.randrange(self.ancho_tiles)
+            y = random.randrange(self.alto_tiles)
+            if self.mapa[y][x] != "SUELO":
+                continue
+            dx, dy = random.choice([(1, 0), (0, 1)])
+            longitud = random.randint(2, 6)
+            for i in range(longitud):
+                nx = x + dx * i
+                ny = y + dy * i
+                if (
+                    0 <= nx < self.ancho_tiles
+                    and 0 <= ny < self.alto_tiles
+                    and self.mapa[ny][nx] == "SUELO"
+                ):
+                    self.mapa[ny][nx] = "PARED"
+                    creadas += 1
+                    if creadas >= objetivo:
+                        break
+                else:
+                    break
 
     def _generar_rios(self):
         """Crea ríos con orientación vertical, horizontal o diagonal."""
