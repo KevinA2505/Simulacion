@@ -63,10 +63,13 @@ class Terreno:
             b = _clamp(COLOR_HUECO[2] + azul + rnd.randint(-10, 10))
             return (r, g, b)
 
-    def dibujar(self, surface):
+    def dibujar(self, surface, cam_x=0, cam_y=0):
         for y, fila in enumerate(self.mapa):
             for x, bloque in enumerate(fila):
-                pos = (x * TAM_CELDA, ALTO_PANEL + y * TAM_CELDA)
+                pos = (
+                    x * TAM_CELDA + cam_x,
+                    ALTO_PANEL + y * TAM_CELDA + cam_y,
+                )
                 color = self._color_tile(bloque, x, y)
                 pygame.draw.rect(surface, color, (*pos, TAM_CELDA, TAM_CELDA))
 
@@ -118,8 +121,8 @@ class Jugador:
             if not self._colisiona(nuevo, terreno):
                 self.rect = nuevo
 
-    def dibujar(self, surface):
-        pygame.draw.rect(surface, self.color, self.rect)
+    def dibujar(self, surface, cam_x=0, cam_y=0):
+        pygame.draw.rect(surface, self.color, self.rect.move(cam_x, cam_y))
 
 
 def dibujar_panel(surface, densidad):
@@ -155,6 +158,10 @@ def main():
     px, py = posicion_inicial(terreno)
     jugador = Jugador(px, py)
 
+    cam_x = cam_y = 0
+    arrastrando = False
+    ultimo_mouse = (0, 0)
+
     corriendo = True
     while corriendo:
         for evento in pygame.event.get():
@@ -174,14 +181,26 @@ def main():
                     terreno.densidad = densidad
                     terreno.generar()
                     jugador.rect.topleft = posicion_inicial(terreno)
+            elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 3:
+                arrastrando = True
+                ultimo_mouse = evento.pos
+            elif evento.type == pygame.MOUSEBUTTONUP and evento.button == 3:
+                arrastrando = False
+            elif evento.type == pygame.MOUSEMOTION and arrastrando:
+                mx, my = evento.pos
+                dx = mx - ultimo_mouse[0]
+                dy = my - ultimo_mouse[1]
+                cam_x += dx
+                cam_y += dy
+                ultimo_mouse = (mx, my)
 
         teclas = pygame.key.get_pressed()
         jugador.mover(teclas, terreno)
 
         pantalla.fill((0, 0, 0))
         dibujar_panel(pantalla, densidad)
-        terreno.dibujar(pantalla)
-        jugador.dibujar(pantalla)
+        terreno.dibujar(pantalla, cam_x, cam_y)
+        jugador.dibujar(pantalla, cam_x, cam_y)
 
         pygame.display.flip()
         reloj.tick(30)
