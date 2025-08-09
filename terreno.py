@@ -10,7 +10,8 @@ def _clamp(valor, minimo=0, maximo=255):
 ANCHO = 600                     # Área de terreno cuadrada
 ALTO_PANEL = 120
 ALTO = ALTO_PANEL + ANCHO       # Mantiene el terreno como un cuadrado
-TAM_CELDA = 20
+# Cada celda del terreno aumenta su tamaño un 15%
+TAM_CELDA = int(20 * 1.15)
 
 # Colores base
 COLOR_SUELO   = (50, 50, 50)     # Gris oscuro y plano
