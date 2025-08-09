@@ -7,10 +7,10 @@ def _clamp(valor, minimo=0, maximo=255):
     return max(minimo, min(maximo, valor))
 
 # Configuración básica
-ANCHO = 600                     # Área de terreno cuadrada
+ANCHO = 1000                    # Área de terreno cuadrada más grande por defecto
 ALTO_PANEL = 120
 ALTO = ALTO_PANEL + ANCHO       # Mantiene el terreno como un cuadrado
-# Cada celda del terreno aumenta su tamaño un 15%
+# Tamaño base de cada celda (ajustable desde el panel de control)
 TAM_CELDA = int(20 * 1.15)
 
 # Colores base
@@ -155,6 +155,8 @@ def dibujar_panel(surface, botones, densidad, densidad_agua, densidad_bosque):
     surface.blit(texto, (200, ALTO_PANEL - 30))
     texto = fuente.render(f"Bosque: {densidad_bosque:.2f}", True, COLOR_TEXTO)
     surface.blit(texto, (360, ALTO_PANEL - 30))
+    texto = fuente.render(f"Celda: {TAM_CELDA}", True, COLOR_TEXTO)
+    surface.blit(texto, (520, ALTO_PANEL - 30))
 
 
 def posicion_inicial(terreno):
@@ -180,7 +182,7 @@ def main():
 
     terreno = Terreno(ancho_tiles, alto_tiles, densidad, densidad_agua, densidad_bosque)
     px, py = posicion_inicial(terreno)
-    jugador = Jugador(px, py)
+    jugador = Jugador(px, py, tamaño=TAM_CELDA - 4)
 
     cam_x = cam_y = 0
     arrastrando = False
@@ -199,39 +201,56 @@ def main():
 
     def densidad_mas():
         nonlocal densidad
-        densidad = min(densidad + 0.05, 1.0)
+        densidad = min(densidad + 0.01, 1.0)
         terreno.densidad = densidad
         regenerar()
 
     def densidad_menos():
         nonlocal densidad
-        densidad = max(densidad - 0.05, 0.0)
+        densidad = max(densidad - 0.01, 0.0)
         terreno.densidad = densidad
         regenerar()
 
     def densidad_agua_mas():
         nonlocal densidad_agua
-        densidad_agua = min(densidad_agua + 0.05, 1.0)
+        densidad_agua = min(densidad_agua + 0.01, 1.0)
         terreno.densidad_agua = densidad_agua
         regenerar()
 
     def densidad_agua_menos():
         nonlocal densidad_agua
-        densidad_agua = max(densidad_agua - 0.05, 0.0)
+        densidad_agua = max(densidad_agua - 0.01, 0.0)
         terreno.densidad_agua = densidad_agua
         regenerar()
 
     def densidad_bosque_mas():
         nonlocal densidad_bosque
-        densidad_bosque = min(densidad_bosque + 0.05, 1.0)
+        densidad_bosque = min(densidad_bosque + 0.01, 1.0)
         terreno.densidad_bosque = densidad_bosque
         regenerar()
 
     def densidad_bosque_menos():
         nonlocal densidad_bosque
-        densidad_bosque = max(densidad_bosque - 0.05, 0.0)
+        densidad_bosque = max(densidad_bosque - 0.01, 0.0)
         terreno.densidad_bosque = densidad_bosque
         regenerar()
+
+    def ajustar_celda(delta):
+        global TAM_CELDA
+        nonlocal ancho_tiles, alto_tiles, terreno, jugador
+        TAM_CELDA = max(5, TAM_CELDA + delta)
+        ancho_tiles = ANCHO // TAM_CELDA
+        alto_tiles = ancho_tiles
+        terreno = Terreno(ancho_tiles, alto_tiles, densidad, densidad_agua, densidad_bosque)
+        px, py = posicion_inicial(terreno)
+        jugador = Jugador(px, py, tamaño=TAM_CELDA - 4)
+        limitar_camara()
+
+    def tam_celda_mas():
+        ajustar_celda(1)
+
+    def tam_celda_menos():
+        ajustar_celda(-1)
 
     y_botones = ALTO_PANEL // 2 - 20
     botones = [
@@ -242,6 +261,8 @@ def main():
         Boton((270, y_botones, 40, 40), "B-", densidad_bosque_menos),
         Boton((320, y_botones, 40, 40), "B+", densidad_bosque_mas),
         Boton((380, y_botones, 120, 40), "Regenerar", regenerar),
+        Boton((520, y_botones, 40, 40), "C-", tam_celda_menos),
+        Boton((570, y_botones, 40, 40), "C+", tam_celda_mas),
     ]
 
     superficie_juego = pygame.Surface((ANCHO, ALTO))
