@@ -196,9 +196,14 @@ def main():
         Boton((120, 20, 120, 40), "Regenerar", regenerar),
     ]
 
+    superficie_juego = pygame.Surface((ANCHO, ALTO))
+    offset_x = offset_y = 0
+
     corriendo = True
     while corriendo:
         for evento in pygame.event.get():
+            if evento.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
+                evento = pygame.event.Event(evento.type, {**evento.dict, "pos": (evento.pos[0] - offset_x, evento.pos[1] - offset_y)})
             for boton in botones:
                 boton.manejar_evento(evento)
             if evento.type == pygame.QUIT:
@@ -227,7 +232,10 @@ def main():
                 dimension = min(evento.w, evento.h - ALTO_PANEL)
                 ANCHO = dimension
                 ALTO = ALTO_PANEL + dimension
-                pantalla = pygame.display.set_mode((ANCHO, ALTO), pygame.RESIZABLE)
+                pantalla = pygame.display.set_mode((evento.w, evento.h), pygame.RESIZABLE)
+                superficie_juego = pygame.Surface((ANCHO, ALTO))
+                offset_x = (evento.w - ANCHO) // 2
+                offset_y = (evento.h - ALTO) // 2
                 ancho_tiles = ANCHO // TAM_CELDA
                 alto_tiles = ancho_tiles
                 terreno = Terreno(ancho_tiles, alto_tiles, densidad)
@@ -237,10 +245,13 @@ def main():
         teclas = pygame.key.get_pressed()
         jugador.mover(teclas, terreno)
 
+        superficie_juego.fill((0, 0, 0))
+        dibujar_panel(superficie_juego, botones, densidad)
+        terreno.dibujar(superficie_juego, cam_x, cam_y)
+        jugador.dibujar(superficie_juego, cam_x, cam_y)
+
         pantalla.fill((0, 0, 0))
-        dibujar_panel(pantalla, botones, densidad)
-        terreno.dibujar(pantalla, cam_x, cam_y)
-        jugador.dibujar(pantalla, cam_x, cam_y)
+        pantalla.blit(superficie_juego, (offset_x, offset_y))
 
         pygame.display.flip()
         reloj.tick(30)
