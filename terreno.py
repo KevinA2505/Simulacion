@@ -73,21 +73,29 @@ class Terreno:
                     break
 
     def _generar_rios(self):
-        """Crea ríos con orientación vertical, horizontal o diagonal."""
+        """Crea ríos con orientación vertical, horizontal o diagonal.
+
+        Tras generar cada río, coloca aleatoriamente entre 2 y 3 puentes
+        (celdas "PUENTE") para permitir el cruce del mismo.
+        """
         direcciones = ["vertical", "horizontal", "diagonal"]
         for _ in range(self.num_rios):
             orient = random.choice(direcciones)
+            coords = []  # Coordenadas del río actual
 
             if orient == "vertical":
                 x = random.randrange(self.ancho_tiles)
                 y = 0
                 while y < self.alto_tiles:
                     self.mapa[y][x] = "AGUA"
+                    coords.append((x, y))
                     # Posible ensanche del río
                     if x > 0 and random.random() < 0.3:
                         self.mapa[y][x - 1] = "AGUA"
+                        coords.append((x - 1, y))
                     if x < self.ancho_tiles - 1 and random.random() < 0.3:
                         self.mapa[y][x + 1] = "AGUA"
+                        coords.append((x + 1, y))
                     x += random.choice([-1, 0, 1])
                     x = max(0, min(self.ancho_tiles - 1, x))
                     y += 1
@@ -97,10 +105,13 @@ class Terreno:
                 x = 0
                 while x < self.ancho_tiles:
                     self.mapa[y][x] = "AGUA"
+                    coords.append((x, y))
                     if y > 0 and random.random() < 0.3:
                         self.mapa[y - 1][x] = "AGUA"
+                        coords.append((x, y - 1))
                     if y < self.alto_tiles - 1 and random.random() < 0.3:
                         self.mapa[y + 1][x] = "AGUA"
+                        coords.append((x, y + 1))
                     y += random.choice([-1, 0, 1])
                     y = max(0, min(self.alto_tiles - 1, y))
                     x += 1
@@ -115,6 +126,7 @@ class Terreno:
                 y = 0
                 while 0 <= x < self.ancho_tiles and y < self.alto_tiles:
                     self.mapa[y][x] = "AGUA"
+                    coords.append((x, y))
                     # Ensanche en celdas alrededor
                     for dx_off, dy_off in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                         nx, ny = x + dx_off, y + dy_off
@@ -124,9 +136,26 @@ class Terreno:
                             and random.random() < 0.3
                         ):
                             self.mapa[ny][nx] = "AGUA"
+                            coords.append((nx, ny))
                     x += dx_dir + random.choice([-1, 0, 1])
                     x = max(0, min(self.ancho_tiles - 1, x))
                     y += 1
+
+            # Colocar puentes en el río actual
+            coords = list(set(coords))
+            if coords:
+                num_puentes = random.randint(2, 3)
+                for bx, by in random.sample(coords, min(num_puentes, len(coords))):
+                    self.mapa[by][bx] = "PUENTE"
+                    # Ampliar el puente a celdas adyacentes de agua
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = bx + dx, by + dy
+                        if (
+                            0 <= nx < self.ancho_tiles
+                            and 0 <= ny < self.alto_tiles
+                            and self.mapa[ny][nx] == "AGUA"
+                        ):
+                            self.mapa[ny][nx] = "PUENTE"
 
     def _color_tile(self, bloque, x, y):
         """Devuelve un color con variaciones oscuras para cada bloque."""
@@ -138,6 +167,9 @@ class Terreno:
             return tuple(_clamp(base[i] + rnd.randint(-20, 20)) for i in range(3))
         elif bloque == "AGUA":
             base = (20, 70, 160)  # Azul agua
+            return tuple(_clamp(base[i] + rnd.randint(-15, 15)) for i in range(3))
+        elif bloque == "PUENTE":
+            base = (160, 100, 40)  # Marrón madera
             return tuple(_clamp(base[i] + rnd.randint(-15, 15)) for i in range(3))
         elif bloque == "BOSQUE":
             base = (20, 100, 20)  # Verde bosque
