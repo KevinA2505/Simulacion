@@ -67,3 +67,31 @@ print(soldado.id)
 
 Este identificador es útil para referenciar unidades específicas durante
 la simulación o el registro de eventos.
+
+## Registro de batalla
+
+Al finalizar un combate se genera el archivo `replay.json` con el historial
+completo de la simulación. El contenido es una lista ordenada de turnos; cada
+elemento contiene el número de turno y las acciones realizadas:
+
+```json
+[
+  {
+    "turno": 1,
+    "acciones": [
+      {
+        "tipo": "mover",
+        "unidad": {"id": 1, "tipo": "Infanteria"},
+        "origen": [0, 0],
+        "destino": [1, 0]
+      }
+    ]
+  }
+]
+```
+
+Las acciones incluyen el tipo (`mover`, `atacar` o `curar`), las posiciones
+de origen y destino cuando corresponda y las unidades implicadas
+identificadas por su `id` y clase. Otro módulo puede leer este archivo y
+recrear la batalla paso a paso siguiendo el orden de los turnos y sus
+acciones.
