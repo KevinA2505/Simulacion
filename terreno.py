@@ -226,3 +226,51 @@ class Terreno:
             return self.colisiones[y][x]
         return True
 
+    def calcular_camino(self, origen, destino):
+        """Calcula un camino entre dos puntos usando el algoritmo A*.
+
+        Los puntos se especifican como tuplas ``(x, y)`` en coordenadas de
+        tiles. Si no existe un camino válido, devuelve ``None``.
+        """
+
+        from heapq import heappop, heappush
+
+        if self.es_colision(*origen) or self.es_colision(*destino):
+            return None
+
+        def heuristica(a, b):
+            return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+        abiertos = []
+        heappush(abiertos, (0, origen))
+        came_from = {}
+        g_score = {origen: 0}
+
+        while abiertos:
+            _, actual = heappop(abiertos)
+            if actual == destino:
+                camino = [actual]
+                while actual in came_from:
+                    actual = came_from[actual]
+                    camino.append(actual)
+                camino.reverse()
+                return camino
+
+            x, y = actual
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if (
+                    0 <= nx < self.ancho_tiles
+                    and 0 <= ny < self.alto_tiles
+                    and not self.colisiones[ny][nx]
+                ):
+                    vecino = (nx, ny)
+                    tentativo = g_score[actual] + 1
+                    if tentativo < g_score.get(vecino, float("inf")):
+                        came_from[vecino] = actual
+                        g_score[vecino] = tentativo
+                        f_score = tentativo + heuristica(vecino, destino)
+                        heappush(abiertos, (f_score, vecino))
+
+        return None
+
