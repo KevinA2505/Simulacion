@@ -71,6 +71,8 @@ class Juego:
         self.ejercito_a = None
         self.ejercito_b = None
         self.simulando = False
+        # Acciones pendientes devueltas por ``CampoBatalla.simular_turno``
+        self.acciones: list[dict] = []
 
     # ------------------------------------------------------------------
     # Métodos de utilidades
@@ -230,6 +232,52 @@ class Juego:
         if unidad_hover:
             mostrar_tooltip(self.superficie_juego, unidad_hover, (mx, my))
 
+    # ------------------------------------------------------------------
+    # Animaciones de acciones de combate
+    # ------------------------------------------------------------------
+    def reproducir_accion(self, accion: dict) -> None:
+        """Muestra una animación simple para la acción indicada.
+
+        Las animaciones son deliberadamente sencillas: líneas que unen al
+        actor con el objetivo o un pequeño punto que se desplaza al moverse
+        una unidad. Se realiza un breve retardo para que el jugador pueda
+        percibir la acción antes de continuar con la siguiente.
+        """
+
+        tipo = accion.get("tipo")
+        ox, oy = accion.get("origen", (0, 0))
+        dx, dy = accion.get("destino", (0, 0))
+
+        inicio = (
+            ox * const.TAM_CELDA + self.cam_x + const.TAM_CELDA // 2,
+            const.ALTO_PANEL + oy * const.TAM_CELDA + self.cam_y + const.TAM_CELDA // 2,
+        )
+        fin = (
+            dx * const.TAM_CELDA + self.cam_x + const.TAM_CELDA // 2,
+            const.ALTO_PANEL + dy * const.TAM_CELDA + self.cam_y + const.TAM_CELDA // 2,
+        )
+
+        color = (255, 255, 0)
+        if tipo == "atacar":
+            color = (255, 0, 0)
+        elif tipo == "curar":
+            color = (0, 255, 0)
+
+        pasos = 5
+        for i in range(pasos):
+            self.dibujar()
+            if tipo == "mover":
+                px = inicio[0] + (fin[0] - inicio[0]) * (i + 1) / pasos
+                py = inicio[1] + (fin[1] - inicio[1]) * (i + 1) / pasos
+                pygame.draw.circle(
+                    self.superficie_juego, color, (int(px), int(py)), const.TAM_CELDA // 3
+                )
+            else:
+                pygame.draw.line(self.superficie_juego, color, inicio, fin, 3)
+            self.pantalla.blit(self.superficie_juego, (self.offset_x, self.offset_y))
+            pygame.display.flip()
+            pygame.time.wait(40)
+
     def mostrar_preparacion(self):
         self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
         posiciones = []
@@ -304,12 +352,18 @@ class Juego:
     def actualizar(self):
         if self.estado == "combate":
             if self.simulando:
-                self.campo.simular_turno(self.ejercito_a, self.ejercito_b)
-                if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
-                    self.estado = "exploracion"
-                    self.boton_batalla.texto = "Batalla"
-                    self.boton_batalla.accion = self.iniciar_batalla
-                    self.simulando = False
+                if self.acciones:
+                    accion = self.acciones.pop(0)
+                    self.reproducir_accion(accion)
+                else:
+                    self.acciones = self.campo.simular_turno(
+                        self.ejercito_a, self.ejercito_b
+                    )
+                    if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
+                        self.estado = "exploracion"
+                        self.boton_batalla.texto = "Batalla"
+                        self.boton_batalla.accion = self.iniciar_batalla
+                        self.simulando = False
         elif self.estado == "exploracion":
             teclas = pygame.key.get_pressed()
             self.jugador.mover(teclas, self.terreno)
