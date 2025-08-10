@@ -57,3 +57,41 @@ def dibujar_panel(surface, botones, densidad, num_rios, densidad_bosque):
     texto = fuente.render(f"Celda: {const.TAM_CELDA}", True, const.COLOR_TEXTO)
     surface.blit(texto, (520, const.ALTO_PANEL - 30))
 
+
+def mostrar_tooltip(surface, unidad, pos):
+    """Renderiza un cuadro con información básica de ``unidad``.
+
+    Parameters
+    ----------
+    surface:
+        Superficie sobre la que se dibuja el tooltip.
+    unidad:
+        Objeto que posee atributos ``salud``, ``ataque``, ``defensa``,
+        ``velocidad`` y ``alcance``.
+    pos:
+        Tupla ``(x, y)`` indicando la posición donde mostrar el tooltip.
+    """
+
+    fuente = pygame.font.SysFont(None, 20)
+    lineas = [
+        f"Salud: {unidad.salud}",
+        f"Ataque: {unidad.ataque}",
+        f"Defensa: {unidad.defensa}",
+        f"Velocidad: {unidad.velocidad}",
+        f"Alcance: {unidad.alcance}",
+    ]
+    textos = [fuente.render(t, True, const.COLOR_TEXTO) for t in lineas]
+    ancho = max(t.get_width() for t in textos) + 10
+    alto = sum(t.get_height() for t in textos) + 10
+    x, y = pos
+    x = min(x + 10, surface.get_width() - ancho)
+    y = min(y + 10, surface.get_height() - alto)
+    rect = pygame.Rect(x, y, ancho, alto)
+    pygame.draw.rect(surface, (230, 230, 230), rect)
+    pygame.draw.rect(surface, (50, 50, 50), rect, 1)
+    offset_y = y + 5
+    for texto in textos:
+        surface.blit(texto, (x + 5, offset_y))
+        offset_y += texto.get_height()
+
+

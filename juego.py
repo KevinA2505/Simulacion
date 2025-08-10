@@ -7,7 +7,7 @@ import pygame
 import constantes as const
 from terreno import Terreno
 from jugador import Jugador
-from ui import Boton, Selector, dibujar_panel
+from ui import Boton, Selector, dibujar_panel, mostrar_tooltip
 from batalla.campo import CampoBatalla
 from batalla.facciones import EjercitoMagia, EjercitoAngeles, EjercitoDemonios
 from batalla.carga import leer_ejercito
@@ -182,16 +182,21 @@ class Juego:
             self.campo.colocar_unidad(unidad, x, y)
 
     def _dibujar_unidades(self):
+        mx, my = pygame.mouse.get_pos()
+        mx -= self.offset_x
+        my -= self.offset_y
+        unidad_hover = None
         for unidad in self.campo.unidades():
             x, y = self.campo.posicion(unidad)
             sx = x * const.TAM_CELDA + self.cam_x
             sy = const.ALTO_PANEL + y * const.TAM_CELDA + self.cam_y
+            rect = pygame.Rect(sx, sy, const.TAM_CELDA, const.TAM_CELDA)
             color = (255, 0, 0) if unidad in self.ejercito_a.unidades else (0, 0, 255)
-            pygame.draw.rect(
-                self.superficie_juego,
-                color,
-                (sx, sy, const.TAM_CELDA, const.TAM_CELDA),
-            )
+            pygame.draw.rect(self.superficie_juego, color, rect)
+            if rect.collidepoint((mx, my)):
+                unidad_hover = unidad
+        if unidad_hover:
+            mostrar_tooltip(self.superficie_juego, unidad_hover, (mx, my))
 
     def mostrar_preparacion(self):
         self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
