@@ -28,3 +28,19 @@ python generar_terreno.py 20 15 42
 ```
 
 El resultado se guarda en `terreno.json` en el directorio actual.
+
+## Identificadores de unidades
+
+Cada instancia de ``Unidad`` y sus subclases genera automáticamente un
+identificador único. Puede accederse a este valor desde el resto del
+código mediante el atributo ``id``:
+
+```python
+from batalla.unidad import Infanteria
+
+soldado = Infanteria()
+print(soldado.id)
+```
+
+Este identificador es útil para referenciar unidades específicas durante
+la simulación o el registro de eventos.
