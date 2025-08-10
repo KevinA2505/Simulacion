@@ -70,6 +70,7 @@ class Juego:
         self.campo = None
         self.ejercito_a = None
         self.ejercito_b = None
+        self.simulando = False
 
     # ------------------------------------------------------------------
     # Métodos de utilidades
@@ -152,25 +153,45 @@ class Juego:
         else:
             self.ejercito_b = self.facciones[self.faccion_b]()
         self._colocar_ejercitos()
-        # Calcular rutas iniciales entre los ejércitos para mostrarlas en la
-        # pantalla de preparación. Se toma como referencia la primera unidad de
-        # cada ejército.
+        # Calcular rutas iniciales entre los ejércitos (referencia de preparación)
         if self.ejercito_a.unidades and self.ejercito_b.unidades:
             pos_a = self.campo.posicion(self.ejercito_a.unidades[0])
             pos_b = self.campo.posicion(self.ejercito_b.unidades[0])
             self.terreno.calcular_camino(pos_a, pos_b, "A")
             self.terreno.calcular_camino(pos_b, pos_a, "B")
-        self.estado = "preparacion"
-        self.boton_batalla.texto = "Iniciar batalla"
-        self.boton_batalla.accion = self.comenzar_combate
 
-    def comenzar_combate(self):
-        # Guardar captura de la superficie actual antes de iniciar la batalla.
-        # El archivo se guarda en el directorio de ejecución.
-        pygame.image.save(self.superficie_juego, "captura_inicial.png")
+        # Preparar combate y mostrar cuenta atrás antes de simular
         self.estado = "combate"
+        self.simulando = False
         self.boton_batalla.texto = "Batalla"
         self.boton_batalla.accion = self.iniciar_batalla
+
+        # Captura de pantalla previa al inicio
+        self.dibujar()
+        pygame.image.save(self.superficie_juego, "captura_inicial.png")
+
+        fuente = pygame.font.Font(None, 120)
+        centro = (
+            const.ANCHO // 2,
+            const.ALTO_PANEL + (const.ALTO - const.ALTO_PANEL) // 2,
+        )
+        for contador in range(3, 0, -1):
+            pygame.event.get()  # Limpiar eventos para bloquear la entrada
+            self.dibujar()
+            texto = fuente.render(str(contador), True, (255, 255, 255))
+            rect = texto.get_rect(center=centro)
+            self.superficie_juego.blit(texto, rect)
+            self.pantalla.fill((0, 0, 0))
+            self.pantalla.blit(self.superficie_juego, (self.offset_x, self.offset_y))
+            pygame.display.flip()
+            pygame.time.wait(1000)
+
+        pygame.event.get()
+        self.simulando = True
+
+    def comenzar_combate(self):
+        """Método obsoleto mantenido por compatibilidad."""
+        self.iniciar_batalla()
 
     def _buscar_posicion(self, desde_derecha=False):
         rango_x = (
@@ -282,11 +303,13 @@ class Juego:
 
     def actualizar(self):
         if self.estado == "combate":
-            self.campo.simular_turno(self.ejercito_a, self.ejercito_b)
-            if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
-                self.estado = "exploracion"
-                self.boton_batalla.texto = "Batalla"
-                self.boton_batalla.accion = self.iniciar_batalla
+            if self.simulando:
+                self.campo.simular_turno(self.ejercito_a, self.ejercito_b)
+                if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
+                    self.estado = "exploracion"
+                    self.boton_batalla.texto = "Batalla"
+                    self.boton_batalla.accion = self.iniciar_batalla
+                    self.simulando = False
         elif self.estado == "exploracion":
             teclas = pygame.key.get_pressed()
             self.jugador.mover(teclas, self.terreno)
