@@ -28,6 +28,7 @@ class Terreno:
         self.densidad_bosque = densidad_bosque
         self.num_rios = num_rios
         self.mapa = []
+        self.colisiones = []
         self.generar()
 
     # ------------------------------------------------------------------
@@ -35,13 +36,15 @@ class Terreno:
     # ------------------------------------------------------------------
     def generar(self):
         self.mapa = []
-        for _ in range(self.alto_tiles):
+        self.colisiones = [[False] * self.ancho_tiles for _ in range(self.alto_tiles)]
+        for y in range(self.alto_tiles):
             fila = []
-            for _ in range(self.ancho_tiles):
+            for x in range(self.ancho_tiles):
                 if random.random() < self.densidad_bosque:
                     fila.append("BOSQUE")
                 else:
                     fila.append("SUELO")
+                # SUELO y BOSQUE son transitables por defecto
             self.mapa.append(fila)
         self._generar_paredes()
         self._generar_rios()
@@ -70,6 +73,7 @@ class Terreno:
                     and self.mapa[ny][nx] == "SUELO"
                 ):
                     self.mapa[ny][nx] = "PARED"
+                    self.colisiones[ny][nx] = True
                     creadas += 1
                     if creadas >= objetivo:
                         break
@@ -93,12 +97,15 @@ class Terreno:
                 y = 0
                 while y < self.alto_tiles:
                     self.mapa[y][x] = "AGUA"
+                    self.colisiones[y][x] = True
                     coords.append((x, y))
                     if x > 0 and random.random() < 0.3:
                         self.mapa[y][x - 1] = "AGUA"
+                        self.colisiones[y][x - 1] = True
                         coords.append((x - 1, y))
                     if x < self.ancho_tiles - 1 and random.random() < 0.3:
                         self.mapa[y][x + 1] = "AGUA"
+                        self.colisiones[y][x + 1] = True
                         coords.append((x + 1, y))
                     x += random.choice([-1, 0, 1])
                     x = max(0, min(self.ancho_tiles - 1, x))
@@ -109,12 +116,15 @@ class Terreno:
                 x = 0
                 while x < self.ancho_tiles:
                     self.mapa[y][x] = "AGUA"
+                    self.colisiones[y][x] = True
                     coords.append((x, y))
                     if y > 0 and random.random() < 0.3:
                         self.mapa[y - 1][x] = "AGUA"
+                        self.colisiones[y - 1][x] = True
                         coords.append((x, y - 1))
                     if y < self.alto_tiles - 1 and random.random() < 0.3:
                         self.mapa[y + 1][x] = "AGUA"
+                        self.colisiones[y + 1][x] = True
                         coords.append((x, y + 1))
                     y += random.choice([-1, 0, 1])
                     y = max(0, min(self.alto_tiles - 1, y))
@@ -130,6 +140,7 @@ class Terreno:
                 y = 0
                 while 0 <= x < self.ancho_tiles and y < self.alto_tiles:
                     self.mapa[y][x] = "AGUA"
+                    self.colisiones[y][x] = True
                     coords.append((x, y))
                     for dx_off, dy_off in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                         nx, ny = x + dx_off, y + dy_off
@@ -139,6 +150,7 @@ class Terreno:
                             and random.random() < 0.3
                         ):
                             self.mapa[ny][nx] = "AGUA"
+                            self.colisiones[ny][nx] = True
                             coords.append((nx, ny))
                     x += dx_dir + random.choice([-1, 0, 1])
                     x = max(0, min(self.ancho_tiles - 1, x))
@@ -149,6 +161,7 @@ class Terreno:
                 num_puentes = random.randint(2, 3)
                 for bx, by in random.sample(coords, min(num_puentes, len(coords))):
                     self.mapa[by][bx] = "PUENTE"
+                    self.colisiones[by][bx] = False
                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                         nx, ny = bx + dx, by + dy
                         if (
@@ -157,6 +170,7 @@ class Terreno:
                             and self.mapa[ny][nx] == "AGUA"
                         ):
                             self.mapa[ny][nx] = "PUENTE"
+                            self.colisiones[ny][nx] = False
 
     # ------------------------------------------------------------------
     # Representación
@@ -202,4 +216,10 @@ class Terreno:
                 if bloque == "SUELO":
                     return x * const.TAM_CELDA, const.ALTO_PANEL + y * const.TAM_CELDA
         return 0, const.ALTO_PANEL
+
+    def es_colision(self, x, y):
+        """Indica si la celda dada no es transitable."""
+        if 0 <= x < self.ancho_tiles and 0 <= y < self.alto_tiles:
+            return self.colisiones[y][x]
+        return True
 
