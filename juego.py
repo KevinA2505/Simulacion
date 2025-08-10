@@ -10,6 +10,7 @@ from jugador import Jugador
 from ui import Boton, Selector, dibujar_panel
 from batalla.campo import CampoBatalla
 from batalla.facciones import EjercitoMagia, EjercitoAngeles, EjercitoDemonios
+from batalla.carga import leer_ejercito
 
 
 class Juego:
@@ -52,9 +53,11 @@ class Juego:
             "Ángeles": EjercitoAngeles,
             "Demonios": EjercitoDemonios,
         }
-        opciones = list(self.facciones.keys())
+        opciones = list(self.facciones.keys()) + ["Archivo"]
         self.faccion_a = opciones[0]
         self.faccion_b = opciones[1]
+        self.ruta_a = None
+        self.ruta_b = None
         self.selector_a = Selector((650, y_botones, 120, 40), opciones, self.set_faccion_a, "A: ")
         self.selector_b = Selector((780, y_botones, 120, 40), opciones, self.set_faccion_b, "B: ")
         self.boton_batalla = Boton((910, y_botones, 80, 40), "Batalla", self.iniciar_batalla)
@@ -129,15 +132,25 @@ class Juego:
         self.ajustar_celda(-1)
 
     def set_faccion_a(self, nombre):
+        if nombre == "Archivo":
+            self.ruta_a = input("Ruta del archivo para el ejército A: ").strip()
         self.faccion_a = nombre
 
     def set_faccion_b(self, nombre):
+        if nombre == "Archivo":
+            self.ruta_b = input("Ruta del archivo para el ejército B: ").strip()
         self.faccion_b = nombre
 
     def iniciar_batalla(self):
         self.campo = CampoBatalla(self.terreno)
-        self.ejercito_a = self.facciones[self.faccion_a]()
-        self.ejercito_b = self.facciones[self.faccion_b]()
+        if self.faccion_a == "Archivo" and self.ruta_a:
+            self.ejercito_a = leer_ejercito(self.ruta_a)
+        else:
+            self.ejercito_a = self.facciones[self.faccion_a]()
+        if self.faccion_b == "Archivo" and self.ruta_b:
+            self.ejercito_b = leer_ejercito(self.ruta_b)
+        else:
+            self.ejercito_b = self.facciones[self.faccion_b]()
         self._colocar_ejercitos()
         self.simulando = True
 
