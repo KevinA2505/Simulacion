@@ -1,5 +1,6 @@
 """Generación y representación del terreno del juego."""
 
+import json
 import random
 import pygame
 
@@ -30,6 +31,7 @@ class Terreno:
         self.num_rios = num_rios
         self.mapa = []
         self.colisiones = []
+        self.rutas = []
         if semilla is not None:
             random.seed(semilla)
         self.generar()
@@ -40,6 +42,7 @@ class Terreno:
     def generar(self):
         self.mapa = []
         self.colisiones = [[False] * self.ancho_tiles for _ in range(self.alto_tiles)]
+        self.rutas = []
         for y in range(self.alto_tiles):
             fila = []
             for x in range(self.ancho_tiles):
@@ -254,6 +257,7 @@ class Terreno:
                     actual = came_from[actual]
                     camino.append(actual)
                 camino.reverse()
+                self.rutas.append(camino)
                 return camino
 
             x, y = actual
@@ -273,4 +277,14 @@ class Terreno:
                         heappush(abiertos, (f_score, vecino))
 
         return None
+
+    def exportar_json(self, ruta):
+        """Guarda el estado del terreno en un archivo JSON."""
+        datos = {
+            "mapa": self.mapa,
+            "colisiones": self.colisiones,
+            "rutas": [[list(celda) for celda in ruta] for ruta in self.rutas],
+        }
+        with open(ruta, "w", encoding="utf-8") as archivo:
+            json.dump(datos, archivo, ensure_ascii=False, indent=2)
 
