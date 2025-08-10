@@ -21,6 +21,7 @@ class Terreno:
         densidad=0.1,
         densidad_bosque=0.1,
         num_rios=1,
+        semilla=None,
     ):
         self.ancho_tiles = ancho_tiles
         self.alto_tiles = alto_tiles
@@ -29,6 +30,8 @@ class Terreno:
         self.num_rios = num_rios
         self.mapa = []
         self.colisiones = []
+        if semilla is not None:
+            random.seed(semilla)
         self.generar()
 
     # ------------------------------------------------------------------

@@ -1,5 +1,7 @@
 """Punto de entrada del juego y clase principal."""
 
+import random
+
 import pygame
 
 import constantes as const
@@ -75,7 +77,9 @@ class Juego:
         self.cam_x = min(0, max(min_cam_x, self.cam_x))
         self.cam_y = min(0, max(min_cam_y, self.cam_y))
 
-    def regenerar(self):
+    def regenerar(self, semilla=None):
+        if semilla is not None:
+            random.seed(semilla)
         self.terreno.generar()
         self.jugador.rect.topleft = self.terreno.posicion_inicial()
 
