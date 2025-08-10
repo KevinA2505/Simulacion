@@ -73,6 +73,8 @@ class Juego:
         self.simulando = False
         # Acciones pendientes devueltas por ``CampoBatalla.simular_turno``
         self.acciones: list[dict] = []
+        self.pausado = False
+        self.avanzar_un_turno = False
 
     # ------------------------------------------------------------------
     # Métodos de utilidades
@@ -165,6 +167,8 @@ class Juego:
         # Preparar combate y mostrar cuenta atrás antes de simular
         self.estado = "combate"
         self.simulando = False
+        self.pausado = False
+        self.avanzar_un_turno = False
         self.boton_batalla.texto = "Batalla"
         self.boton_batalla.accion = self.iniciar_batalla
 
@@ -338,6 +342,10 @@ class Juego:
                     self.densidad_mas()
                 elif evento.key == pygame.K_MINUS:
                     self.densidad_menos()
+                elif evento.key == pygame.K_p and self.estado == "combate":
+                    self.pausado = not self.pausado
+                elif evento.key == pygame.K_n and self.estado == "combate":
+                    self.avanzar_un_turno = True
             elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 3:
                 self.arrastrando = True
                 self.ultimo_mouse = evento.pos
@@ -367,9 +375,12 @@ class Juego:
         if self.estado == "combate":
             if self.simulando:
                 if self.acciones:
-                    accion = self.acciones.pop(0)
-                    self.reproducir_accion(accion)
-                else:
+                    if not self.pausado or self.avanzar_un_turno:
+                        accion = self.acciones.pop(0)
+                        self.reproducir_accion(accion)
+                        if not self.acciones and self.avanzar_un_turno and self.pausado:
+                            self.avanzar_un_turno = False
+                elif not self.pausado or self.avanzar_un_turno:
                     self.acciones = self.campo.simular_turno(
                         self.ejercito_a, self.ejercito_b
                     )
