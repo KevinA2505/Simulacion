@@ -165,6 +165,9 @@ class Juego:
         self.boton_batalla.accion = self.comenzar_combate
 
     def comenzar_combate(self):
+        # Guardar captura de la superficie actual antes de iniciar la batalla.
+        # El archivo se guarda en el directorio de ejecución.
+        pygame.image.save(self.superficie_juego, "captura_inicial.png")
         self.estado = "combate"
         self.boton_batalla.texto = "Batalla"
         self.boton_batalla.accion = self.iniciar_batalla
