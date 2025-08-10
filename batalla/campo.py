@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Dict, Iterable, Tuple
 
 from terreno import Terreno
@@ -34,6 +35,7 @@ class CampoBatalla:
             "curacion_total": 0,
             "daño_por_unidad": {},
         }
+        self._replay: list[dict] = []
 
     # ------------------------------------------------------------------
     # Gestión de unidades
@@ -201,6 +203,12 @@ class CampoBatalla:
                     }
                 )
 
+        self._replay.append(
+            {
+                "turno": self._estadisticas["turno_actual"],
+                "acciones": list(acciones),
+            }
+        )
         return acciones
 
     def simular(self, ejercito_a: Ejercito, ejercito_b: Ejercito, turnos: int = 10) -> None:
@@ -216,3 +224,33 @@ class CampoBatalla:
         stats = dict(self._estadisticas)
         stats["daño_por_unidad"] = dict(self._estadisticas["daño_por_unidad"])
         return stats
+
+    def exportar_replay(self, ruta: str) -> None:
+        """Guarda en ``ruta`` el registro completo de acciones realizadas.
+
+        El archivo generado es una lista de turnos, cada uno con las acciones
+        ocurridas en orden. Las unidades se representan mediante su clase e
+        identificador único para que otros módulos puedan reconstruir la
+        batalla paso a paso.
+        """
+
+        datos = []
+        for turno in self._replay:
+            acciones = []
+            for acc in turno["acciones"]:
+                item = dict(acc)
+                if "unidad" in item:
+                    u = item["unidad"]
+                    item["unidad"] = {"id": str(u.id), "tipo": u.__class__.__name__}
+                if "objetivo" in item:
+                    o = item["objetivo"]
+                    item["objetivo"] = {"id": str(o.id), "tipo": o.__class__.__name__}
+                if "origen" in item:
+                    item["origen"] = list(item["origen"])
+                if "destino" in item:
+                    item["destino"] = list(item["destino"])
+                acciones.append(item)
+            datos.append({"turno": turno["turno"], "acciones": acciones})
+
+        with open(ruta, "w", encoding="utf-8") as fh:
+            json.dump(datos, fh, ensure_ascii=False, indent=2)

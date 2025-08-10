@@ -417,6 +417,8 @@ class Juego:
                                     linea += " (MVP)"
                                 reporte.write(linea + "\n")
 
+                        self.campo.exportar_replay("replay.json")
+
                         self.estado = "exploracion"
                         self.boton_batalla.texto = "Batalla"
                         self.boton_batalla.accion = self.iniciar_batalla
