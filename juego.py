@@ -227,6 +227,20 @@ class Juego:
             rect = pygame.Rect(sx, sy, const.TAM_CELDA, const.TAM_CELDA)
             color = (255, 0, 0) if unidad in self.ejercito_a.unidades else (0, 0, 255)
             pygame.draw.rect(self.superficie_juego, color, rect)
+            # Barra de salud sobre la unidad
+            salud_max = self.campo._salud_max.get(unidad, unidad.salud)
+            ancho_barra = const.TAM_CELDA
+            alto_barra = 4
+            bx = sx
+            by = sy - alto_barra - 2
+            fondo = pygame.Rect(bx, by, ancho_barra, alto_barra)
+            pygame.draw.rect(self.superficie_juego, (255, 0, 0), fondo)
+            if salud_max > 0:
+                ancho_salud = int(ancho_barra * max(unidad.salud, 0) / salud_max)
+            else:
+                ancho_salud = 0
+            barra = pygame.Rect(bx, by, ancho_salud, alto_barra)
+            pygame.draw.rect(self.superficie_juego, (0, 255, 0), barra)
             if rect.collidepoint((mx, my)):
                 unidad_hover = unidad
         if unidad_hover:
