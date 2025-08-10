@@ -17,17 +17,34 @@ El archivo generado contiene el mapa, la matriz de colisiones y una lista
 de todas las rutas calculadas, de modo que pueda ser reutilizado por otros
 módulos.
 
-## Generar terreno desde la línea de comandos
+## Exportar datos del ejército
 
-El script `generar_terreno.py` permite crear un mapa sin necesidad de
-escribir código adicional. Los parámetros requeridos son el ancho, el alto y
-una semilla opcional para la generación:
+La clase `Ejercito` permite guardar la información de sus unidades en un
+archivo JSON:
+
+```python
+from batalla.ejercito import crear_ejercito
+
+config = [{"tipo": "Infanteria", "cantidad": 2}]
+ejercito = crear_ejercito(config)
+ejercito.exportar_json("ejercito.json")
+```
+
+El archivo generado contiene una lista de unidades con sus atributos básicos
+e identificadores únicos.
+
+## Generar terreno y ejército desde la línea de comandos
+
+El script `generar_terreno.py` permite crear un mapa y un ejército de prueba
+sin necesidad de escribir código adicional. Los parámetros requeridos son el
+ancho, el alto y una semilla opcional para la generación:
 
 ```bash
 python generar_terreno.py 20 15 42
 ```
 
-El resultado se guarda en `terreno.json` en el directorio actual.
+El resultado se guarda en `terreno.json` y `ejercito.json` en el directorio
+actual.
 
 ## Identificadores de unidades
 

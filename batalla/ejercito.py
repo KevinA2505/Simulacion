@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from .unidad import (
     Unidad,
     Infanteria,
@@ -46,6 +48,30 @@ class Ejercito:
                     objetivo.eliminar_unidad(defensor)
             else:
                 raise ValueError("Objetivo no soportado")
+
+    def exportar_json(self, ruta):
+        """Guarda la lista de unidades en un archivo JSON.
+
+        Parameters
+        ----------
+        ruta: str
+            Ruta del archivo donde se almacenará la información.
+        """
+
+        datos = [
+            {
+                "id": str(u.id),
+                "tipo": type(u).__name__,
+                "salud": u.salud,
+                "ataque": u.ataque,
+                "defensa": u.defensa,
+                "velocidad": u.velocidad,
+                "alcance": u.alcance,
+            }
+            for u in self.unidades
+        ]
+        with open(ruta, "w", encoding="utf-8") as archivo:
+            json.dump(datos, archivo, ensure_ascii=False, indent=2)
 
 
 def crear_ejercito(config):
