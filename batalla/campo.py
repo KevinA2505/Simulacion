@@ -90,11 +90,20 @@ class CampoBatalla:
             key=lambda u: abs(self.posicion(u)[0] - ux) + abs(self.posicion(u)[1] - uy),
         )
 
-    def simular_turno(self, ejercito_a: Ejercito, ejercito_b: Ejercito) -> None:
-        """Avanza un turno completo para ambos ejércitos."""
+    def simular_turno(self, ejercito_a: Ejercito, ejercito_b: Ejercito) -> list[dict]:
+        """Avanza un turno completo para ambos ejércitos.
+
+        Devuelve una lista de acciones realizadas durante el turno. Cada
+        acción es un diccionario con una clave ``"tipo"`` que puede tomar los
+        valores ``"mover"``, ``"atacar"`` o ``"curar"`` y otros campos
+        relacionados con la acción.
+        """
+
+        acciones: list[dict] = []
 
         for unidad in list(self.unidades()):
             if not unidad.esta_viva():
+                # Limpiamos la unidad caída del campo de batalla
                 self.eliminar_unidad(unidad)
                 ejercito_a.eliminar_unidad(unidad)
                 ejercito_b.eliminar_unidad(unidad)
@@ -125,12 +134,32 @@ class CampoBatalla:
                     aliado = self._objetivo_cercano(unidad, heridos)
                     ax, ay = self.posicion(aliado)
                     if abs(ux - ax) + abs(uy - ay) <= unidad.alcance:
-                        unidad.curar(aliado)
+                        cantidad = unidad.curar(aliado)
+                        acciones.append(
+                            {
+                                "tipo": "curar",
+                                "unidad": unidad,
+                                "objetivo": aliado,
+                                "origen": (ux, uy),
+                                "destino": (ax, ay),
+                                "cantidad": cantidad,
+                            }
+                        )
                         continue
 
             # Ataque si está en alcance
             if dist <= unidad.alcance:
-                objetivo.recibir_daño(unidad.ataque)
+                daño = objetivo.recibir_daño(unidad.ataque)
+                acciones.append(
+                    {
+                        "tipo": "atacar",
+                        "unidad": unidad,
+                        "objetivo": objetivo,
+                        "origen": (ux, uy),
+                        "destino": (ox, oy),
+                        "daño": daño,
+                    }
+                )
                 if not objetivo.esta_viva():
                     self.eliminar_unidad(objetivo)
                     ejercito_a.eliminar_unidad(objetivo)
@@ -141,9 +170,26 @@ class CampoBatalla:
             dx = 1 if ox > ux else -1 if ox < ux else 0
             dy = 1 if oy > uy else -1 if oy < uy else 0
             if dx and self.mover_unidad(unidad, dx, 0):
+                acciones.append(
+                    {
+                        "tipo": "mover",
+                        "unidad": unidad,
+                        "origen": (ux, uy),
+                        "destino": (ux + dx, uy),
+                    }
+                )
                 continue
-            if dy:
-                self.mover_unidad(unidad, 0, dy)
+            if dy and self.mover_unidad(unidad, 0, dy):
+                acciones.append(
+                    {
+                        "tipo": "mover",
+                        "unidad": unidad,
+                        "origen": (ux, uy),
+                        "destino": (ux, uy + dy),
+                    }
+                )
+
+        return acciones
 
     def simular(self, ejercito_a: Ejercito, ejercito_b: Ejercito, turnos: int = 10) -> None:
         """Ejecuta varios turnos hasta que un ejército sea derrotado."""
