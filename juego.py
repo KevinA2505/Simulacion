@@ -66,7 +66,7 @@ class Juego:
         self.superficie_juego = pygame.Surface((const.ANCHO, const.ALTO))
         self.offset_x = self.offset_y = 0
         self.corriendo = True
-        self.simulando = False
+        self.estado = "exploracion"
         self.campo = None
         self.ejercito_a = None
         self.ejercito_b = None
@@ -152,7 +152,14 @@ class Juego:
         else:
             self.ejercito_b = self.facciones[self.faccion_b]()
         self._colocar_ejercitos()
-        self.simulando = True
+        self.estado = "preparacion"
+        self.boton_batalla.texto = "Iniciar batalla"
+        self.boton_batalla.accion = self.comenzar_combate
+
+    def comenzar_combate(self):
+        self.estado = "combate"
+        self.boton_batalla.texto = "Batalla"
+        self.boton_batalla.accion = self.iniciar_batalla
 
     def _buscar_posicion(self, desde_derecha=False):
         rango_x = (
@@ -185,6 +192,11 @@ class Juego:
                 color,
                 (sx, sy, const.TAM_CELDA, const.TAM_CELDA),
             )
+
+    def mostrar_preparacion(self):
+        self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
+        if self.campo:
+            self._dibujar_unidades()
 
     # ------------------------------------------------------------------
     # Bucle principal
@@ -233,22 +245,27 @@ class Juego:
                 self.limitar_camara()
 
     def actualizar(self):
-        if self.simulando:
+        if self.estado == "combate":
             self.campo.simular_turno(self.ejercito_a, self.ejercito_b)
             if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
-                self.simulando = False
-        else:
+                self.estado = "exploracion"
+                self.boton_batalla.texto = "Batalla"
+                self.boton_batalla.accion = self.iniciar_batalla
+        elif self.estado == "exploracion":
             teclas = pygame.key.get_pressed()
             self.jugador.mover(teclas, self.terreno)
 
     def dibujar(self):
         self.superficie_juego.fill((0, 0, 0))
         dibujar_panel(self.superficie_juego, self.botones, self.densidad, self.num_rios, self.densidad_bosque)
-        self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
-        if self.simulando and self.campo:
-            self._dibujar_unidades()
+        if self.estado == "preparacion":
+            self.mostrar_preparacion()
         else:
-            self.jugador.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
+            self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
+            if self.estado == "combate" and self.campo:
+                self._dibujar_unidades()
+            else:
+                self.jugador.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
         self.pantalla.fill((0, 0, 0))
         self.pantalla.blit(self.superficie_juego, (self.offset_x, self.offset_y))
 
