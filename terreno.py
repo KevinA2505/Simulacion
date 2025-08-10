@@ -31,7 +31,8 @@ class Terreno:
         self.num_rios = num_rios
         self.mapa = []
         self.colisiones = []
-        self.rutas = []
+        # Diccionario de rutas calculadas por ejército
+        self.rutas = {}
         if semilla is not None:
             random.seed(semilla)
         self.generar()
@@ -42,7 +43,8 @@ class Terreno:
     def generar(self):
         self.mapa = []
         self.colisiones = [[False] * self.ancho_tiles for _ in range(self.alto_tiles)]
-        self.rutas = []
+        # Reinicia las rutas por ejército al regenerar el mapa
+        self.rutas = {}
         for y in range(self.alto_tiles):
             fila = []
             for x in range(self.ancho_tiles):
@@ -229,11 +231,13 @@ class Terreno:
             return self.colisiones[y][x]
         return True
 
-    def calcular_camino(self, origen, destino):
+    def calcular_camino(self, origen, destino, ejercito=None):
         """Calcula un camino entre dos puntos usando el algoritmo A*.
 
-        Los puntos se especifican como tuplas ``(x, y)`` en coordenadas de
-        tiles. Si no existe un camino válido, devuelve ``None``.
+        ``origen`` y ``destino`` deben ser tuplas ``(x, y)`` en coordenadas
+        de tiles. Si se proporciona ``ejercito``, el camino se almacenará bajo
+        esa clave en ``self.rutas`` para poder consultarlo posteriormente por
+        cada ejército. Si no existe un camino válido, devuelve ``None``.
         """
 
         from heapq import heappop, heappush
@@ -257,7 +261,8 @@ class Terreno:
                     actual = came_from[actual]
                     camino.append(actual)
                 camino.reverse()
-                self.rutas.append(camino)
+                clave = ejercito if ejercito is not None else "global"
+                self.rutas.setdefault(clave, []).append(camino)
                 return camino
 
             x, y = actual
@@ -283,7 +288,10 @@ class Terreno:
         datos = {
             "mapa": self.mapa,
             "colisiones": self.colisiones,
-            "rutas": [[list(celda) for celda in ruta] for ruta in self.rutas],
+            "rutas": {
+                str(k): [[list(celda) for celda in ruta] for ruta in rutas]
+                for k, rutas in self.rutas.items()
+            },
         }
         with open(ruta, "w", encoding="utf-8") as archivo:
             json.dump(datos, archivo, ensure_ascii=False, indent=2)
