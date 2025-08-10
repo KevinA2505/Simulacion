@@ -385,6 +385,28 @@ class Juego:
                         self.ejercito_a, self.ejercito_b
                     )
                     if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
+                        # Obtener estadísticas finales del combate y generar reporte
+                        estadisticas = self.campo.obtener_estadisticas()
+                        ganadores = []
+                        if self.ejercito_a.unidades:
+                            ganadores.append("Ejército A")
+                        if self.ejercito_b.unidades:
+                            ganadores.append("Ejército B")
+                        with open("reporte_batalla.txt", "w", encoding="utf-8") as reporte:
+                            reporte.write(
+                                "Ganadores: "
+                                + (", ".join(ganadores) if ganadores else "Empate")
+                                + "\n"
+                            )
+                            reporte.write(
+                                f"Turnos totales: {estadisticas.get('turno_actual', 0)}\n\n"
+                            )
+                            reporte.write("Resumen por unidad:\n")
+                            for unidad in self.campo.unidades():
+                                reporte.write(
+                                    f"- {unidad.__class__.__name__} (ID {unidad.id}) - Salud: {unidad.salud}\n"
+                                )
+
                         self.estado = "exploracion"
                         self.boton_batalla.texto = "Batalla"
                         self.boton_batalla.accion = self.iniciar_batalla
