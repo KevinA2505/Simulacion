@@ -24,6 +24,25 @@ class Boton:
         surface.blit(texto, texto.get_rect(center=self.rect.center))
 
 
+class Selector(Boton):
+    """Botón que rota entre varias opciones de texto."""
+
+    def __init__(self, rect, opciones, callback, prefijo=""):
+        self.opciones = opciones
+        self.indice = 0
+        self.callback = callback
+        self.prefijo = prefijo
+        super().__init__(rect, self._texto_actual(), self._cambiar)
+
+    def _texto_actual(self):
+        return f"{self.prefijo}{self.opciones[self.indice]}"
+
+    def _cambiar(self):
+        self.indice = (self.indice + 1) % len(self.opciones)
+        self.texto = self._texto_actual()
+        self.callback(self.opciones[self.indice])
+
+
 def dibujar_panel(surface, botones, densidad, num_rios, densidad_bosque):
     pygame.draw.rect(surface, const.COLOR_PANEL, (0, 0, const.ANCHO, const.ALTO_PANEL))
     for boton in botones:

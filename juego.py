@@ -5,7 +5,9 @@ import pygame
 import constantes as const
 from terreno import Terreno
 from jugador import Jugador
-from ui import Boton, dibujar_panel
+from ui import Boton, Selector, dibujar_panel
+from batalla.campo import CampoBatalla
+from batalla.facciones import EjercitoMagia, EjercitoAngeles, EjercitoDemonios
 
 
 class Juego:
@@ -42,9 +44,27 @@ class Juego:
             Boton((570, y_botones, 40, 40), "C+", self.tam_celda_mas),
         ]
 
+        # Selección de facciones y control de batalla
+        self.facciones = {
+            "Magia": EjercitoMagia,
+            "Ángeles": EjercitoAngeles,
+            "Demonios": EjercitoDemonios,
+        }
+        opciones = list(self.facciones.keys())
+        self.faccion_a = opciones[0]
+        self.faccion_b = opciones[1]
+        self.selector_a = Selector((650, y_botones, 120, 40), opciones, self.set_faccion_a, "A: ")
+        self.selector_b = Selector((780, y_botones, 120, 40), opciones, self.set_faccion_b, "B: ")
+        self.boton_batalla = Boton((910, y_botones, 80, 40), "Batalla", self.iniciar_batalla)
+        self.botones.extend([self.selector_a, self.selector_b, self.boton_batalla])
+
         self.superficie_juego = pygame.Surface((const.ANCHO, const.ALTO))
         self.offset_x = self.offset_y = 0
         self.corriendo = True
+        self.simulando = False
+        self.campo = None
+        self.ejercito_a = None
+        self.ejercito_b = None
 
     # ------------------------------------------------------------------
     # Métodos de utilidades
@@ -104,6 +124,51 @@ class Juego:
     def tam_celda_menos(self):
         self.ajustar_celda(-1)
 
+    def set_faccion_a(self, nombre):
+        self.faccion_a = nombre
+
+    def set_faccion_b(self, nombre):
+        self.faccion_b = nombre
+
+    def iniciar_batalla(self):
+        self.campo = CampoBatalla(self.terreno)
+        self.ejercito_a = self.facciones[self.faccion_a]()
+        self.ejercito_b = self.facciones[self.faccion_b]()
+        self._colocar_ejercitos()
+        self.simulando = True
+
+    def _buscar_posicion(self, desde_derecha=False):
+        rango_x = (
+            range(self.campo.ancho - 1, -1, -1)
+            if desde_derecha
+            else range(self.campo.ancho)
+        )
+        for x in rango_x:
+            for y in range(self.campo.alto):
+                if self.campo.es_transitable(x, y) and self.campo._grid[y][x] is None:
+                    return x, y
+        raise ValueError("No hay posiciones disponibles")
+
+    def _colocar_ejercitos(self):
+        for unidad in self.ejercito_a.unidades:
+            x, y = self._buscar_posicion()
+            self.campo.colocar_unidad(unidad, x, y)
+        for unidad in self.ejercito_b.unidades:
+            x, y = self._buscar_posicion(desde_derecha=True)
+            self.campo.colocar_unidad(unidad, x, y)
+
+    def _dibujar_unidades(self):
+        for unidad in self.campo.unidades():
+            x, y = self.campo.posicion(unidad)
+            sx = x * const.TAM_CELDA + self.cam_x
+            sy = const.ALTO_PANEL + y * const.TAM_CELDA + self.cam_y
+            color = (255, 0, 0) if unidad in self.ejercito_a.unidades else (0, 0, 255)
+            pygame.draw.rect(
+                self.superficie_juego,
+                color,
+                (sx, sy, const.TAM_CELDA, const.TAM_CELDA),
+            )
+
     # ------------------------------------------------------------------
     # Bucle principal
     # ------------------------------------------------------------------
@@ -151,14 +216,22 @@ class Juego:
                 self.limitar_camara()
 
     def actualizar(self):
-        teclas = pygame.key.get_pressed()
-        self.jugador.mover(teclas, self.terreno)
+        if self.simulando:
+            self.campo.simular_turno(self.ejercito_a, self.ejercito_b)
+            if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
+                self.simulando = False
+        else:
+            teclas = pygame.key.get_pressed()
+            self.jugador.mover(teclas, self.terreno)
 
     def dibujar(self):
         self.superficie_juego.fill((0, 0, 0))
         dibujar_panel(self.superficie_juego, self.botones, self.densidad, self.num_rios, self.densidad_bosque)
         self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
-        self.jugador.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
+        if self.simulando and self.campo:
+            self._dibujar_unidades()
+        else:
+            self.jugador.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
         self.pantalla.fill((0, 0, 0))
         self.pantalla.blit(self.superficie_juego, (self.offset_x, self.offset_y))
 
