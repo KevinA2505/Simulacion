@@ -7,7 +7,7 @@ import pygame
 import constantes as const
 from terreno import Terreno
 from jugador import Jugador
-from ui import Boton, Selector, dibujar_panel, mostrar_tooltip
+from ui import Boton, Selector, dibujar_panel, mostrar_tooltip, dibujar_minimapa
 from batalla.campo import CampoBatalla
 from batalla.facciones import EjercitoMagia, EjercitoAngeles, EjercitoDemonios
 from batalla.carga import leer_ejercito
@@ -208,8 +208,17 @@ class Juego:
 
     def mostrar_preparacion(self):
         self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
+        posiciones = []
         if self.campo:
             self._dibujar_unidades()
+            for unidad in self.campo.unidades():
+                x, y = self.campo.posicion(unidad)
+                color = (
+                    (255, 0, 0)
+                    if unidad in self.ejercito_a.unidades
+                    else (0, 0, 255)
+                )
+                posiciones.append((x, y, color))
         # Resaltar las rutas calculadas para cada ejército
         colores = {"A": (255, 0, 0), "B": (0, 0, 255)}
         for ejercito, rutas in self.terreno.rutas.items():
@@ -220,6 +229,7 @@ class Juego:
                     sy = const.ALTO_PANEL + y * const.TAM_CELDA + self.cam_y
                     rect = pygame.Rect(sx, sy, const.TAM_CELDA, const.TAM_CELDA)
                     pygame.draw.rect(self.superficie_juego, color, rect, 2)
+        dibujar_minimapa(self.superficie_juego, self.terreno, posiciones)
 
     # ------------------------------------------------------------------
     # Bucle principal
@@ -286,7 +296,17 @@ class Juego:
         else:
             self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
             if self.estado == "combate" and self.campo:
+                posiciones = []
                 self._dibujar_unidades()
+                for unidad in self.campo.unidades():
+                    x, y = self.campo.posicion(unidad)
+                    color = (
+                        (255, 0, 0)
+                        if unidad in self.ejercito_a.unidades
+                        else (0, 0, 255)
+                    )
+                    posiciones.append((x, y, color))
+                dibujar_minimapa(self.superficie_juego, self.terreno, posiciones)
             else:
                 self.jugador.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
         self.pantalla.fill((0, 0, 0))

@@ -95,3 +95,43 @@ def mostrar_tooltip(surface, unidad, pos):
         offset_y += texto.get_height()
 
 
+def dibujar_minimapa(surface, terreno, posiciones=()):
+    """Dibuja una vista reducida del terreno y las unidades.
+
+    ``surface`` es la superficie de destino, ``terreno`` el mapa completo y
+    ``posiciones`` una secuencia opcional de tuplas ``(x, y, color)`` donde
+    ``x`` e ``y`` son coordenadas de tiles.
+    """
+
+    tamaño = 150
+    margen = 10
+    rect = pygame.Rect(
+        const.ANCHO - tamaño - margen,
+        const.ALTO_PANEL + margen,
+        tamaño,
+        tamaño,
+    )
+    pygame.draw.rect(surface, (30, 30, 30), rect)
+    tile_w = rect.width / terreno.ancho_tiles
+    tile_h = rect.height / terreno.alto_tiles
+    for y, fila in enumerate(terreno.mapa):
+        for x, bloque in enumerate(fila):
+            color = terreno._color_tile(bloque, x, y)
+            celda = pygame.Rect(
+                rect.x + int(x * tile_w),
+                rect.y + int(y * tile_h),
+                int(tile_w) + 1,
+                int(tile_h) + 1,
+            )
+            pygame.draw.rect(surface, color, celda)
+    for x, y, color in posiciones:
+        px = rect.x + int(x * tile_w)
+        py = rect.y + int(y * tile_h)
+        pygame.draw.rect(
+            surface,
+            color,
+            (px, py, max(2, int(tile_w)), max(2, int(tile_h))),
+        )
+    pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+
+
