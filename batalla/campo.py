@@ -28,6 +28,7 @@ class CampoBatalla:
         ]
         self._posiciones: Dict[Unidad, Tuple[int, int]] = {}
         self._salud_max: Dict[Unidad, int] = {}
+        self._estadisticas = {"turno_actual": 0, "daño_total": 0, "curacion_total": 0}
 
     # ------------------------------------------------------------------
     # Gestión de unidades
@@ -100,6 +101,7 @@ class CampoBatalla:
         """
 
         acciones: list[dict] = []
+        self._estadisticas["turno_actual"] += 1
 
         for unidad in list(self.unidades()):
             if not unidad.esta_viva():
@@ -135,6 +137,7 @@ class CampoBatalla:
                     ax, ay = self.posicion(aliado)
                     if abs(ux - ax) + abs(uy - ay) <= unidad.alcance:
                         cantidad = unidad.curar(aliado)
+                        self._estadisticas["curacion_total"] += cantidad
                         acciones.append(
                             {
                                 "tipo": "curar",
@@ -150,6 +153,7 @@ class CampoBatalla:
             # Ataque si está en alcance
             if dist <= unidad.alcance:
                 daño = objetivo.recibir_daño(unidad.ataque)
+                self._estadisticas["daño_total"] += daño
                 acciones.append(
                     {
                         "tipo": "atacar",
@@ -198,3 +202,8 @@ class CampoBatalla:
             self.simular_turno(ejercito_a, ejercito_b)
             if not ejercito_a.unidades or not ejercito_b.unidades:
                 break
+
+    def obtener_estadisticas(self) -> dict:
+        """Devuelve un resumen de la simulación realizada."""
+
+        return dict(self._estadisticas)
