@@ -10,6 +10,7 @@ from .unidad import (
 )
 from .ejercito import Ejercito
 from .facciones import EjercitoMagia, EjercitoAngeles, EjercitoDemonios
+from .campo import CampoBatalla
 
 __all__ = [
     "Unidad",
@@ -22,4 +23,5 @@ __all__ = [
     "EjercitoMagia",
     "EjercitoAngeles",
     "EjercitoDemonios",
+    "CampoBatalla",
 ]
