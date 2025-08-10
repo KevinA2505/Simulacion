@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from .unidad import Unidad
+from .unidad import (
+    Unidad,
+    Infanteria,
+    Arqueria,
+    Caballeria,
+    Defensa,
+    Soporte,
+)
 
 
 class Ejercito:
@@ -39,3 +46,41 @@ class Ejercito:
                     objetivo.eliminar_unidad(defensor)
             else:
                 raise ValueError("Objetivo no soportado")
+
+
+def crear_ejercito(config):
+    """Crea un :class:`Ejercito` a partir de una configuración.
+
+    Parameters
+    ----------
+    config:
+        Lista de diccionarios con dos claves: ``tipo`` y ``cantidad``. El
+        ``tipo`` debe ser el nombre de la clase de unidad como ``"Infanteria"`` y
+        ``cantidad`` la cantidad de unidades de ese tipo que se desean crear.
+
+    Returns
+    -------
+    Ejercito
+        Objeto de ejército poblado con las unidades especificadas.
+    """
+
+    mapa_unidades = {
+        "Infanteria": Infanteria,
+        "Arqueria": Arqueria,
+        "Caballeria": Caballeria,
+        "Defensa": Defensa,
+        "Soporte": Soporte,
+    }
+
+    ejercito = Ejercito()
+
+    for elemento in config:
+        tipo = elemento.get("tipo")
+        cantidad = elemento.get("cantidad", 0)
+        clase_unidad = mapa_unidades.get(tipo)
+        if clase_unidad is None:
+            raise ValueError(f"Tipo de unidad desconocido: {tipo}")
+        for _ in range(cantidad):
+            ejercito.agregar_unidad(clase_unidad())
+
+    return ejercito
