@@ -152,6 +152,14 @@ class Juego:
         else:
             self.ejercito_b = self.facciones[self.faccion_b]()
         self._colocar_ejercitos()
+        # Calcular rutas iniciales entre los ejércitos para mostrarlas en la
+        # pantalla de preparación. Se toma como referencia la primera unidad de
+        # cada ejército.
+        if self.ejercito_a.unidades and self.ejercito_b.unidades:
+            pos_a = self.campo.posicion(self.ejercito_a.unidades[0])
+            pos_b = self.campo.posicion(self.ejercito_b.unidades[0])
+            self.terreno.calcular_camino(pos_a, pos_b, "A")
+            self.terreno.calcular_camino(pos_b, pos_a, "B")
         self.estado = "preparacion"
         self.boton_batalla.texto = "Iniciar batalla"
         self.boton_batalla.accion = self.comenzar_combate
@@ -202,6 +210,16 @@ class Juego:
         self.terreno.dibujar(self.superficie_juego, self.cam_x, self.cam_y)
         if self.campo:
             self._dibujar_unidades()
+        # Resaltar las rutas calculadas para cada ejército
+        colores = {"A": (255, 0, 0), "B": (0, 0, 255)}
+        for ejercito, rutas in self.terreno.rutas.items():
+            color = colores.get(ejercito, (255, 255, 0))
+            for ruta in rutas:
+                for x, y in ruta:
+                    sx = x * const.TAM_CELDA + self.cam_x
+                    sy = const.ALTO_PANEL + y * const.TAM_CELDA + self.cam_y
+                    rect = pygame.Rect(sx, sy, const.TAM_CELDA, const.TAM_CELDA)
+                    pygame.draw.rect(self.superficie_juego, color, rect, 2)
 
     # ------------------------------------------------------------------
     # Bucle principal
