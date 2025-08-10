@@ -46,6 +46,12 @@ python generar_terreno.py 20 15 42
 El resultado se guarda en `terreno.json` y `ejercito.json` en el directorio
 actual.
 
+## Captura de pantalla inicial de batalla
+
+Al confirmar una batalla desde `juego.py`, se guarda automáticamente la
+superficie actual en una imagen llamada `captura_inicial.png` ubicada en el
+directorio donde se ejecuta el juego.
+
 ## Identificadores de unidades
 
 Cada instancia de ``Unidad`` y sus subclases genera automáticamente un
