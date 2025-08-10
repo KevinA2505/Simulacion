@@ -28,7 +28,12 @@ class CampoBatalla:
         ]
         self._posiciones: Dict[Unidad, Tuple[int, int]] = {}
         self._salud_max: Dict[Unidad, int] = {}
-        self._estadisticas = {"turno_actual": 0, "daño_total": 0, "curacion_total": 0}
+        self._estadisticas = {
+            "turno_actual": 0,
+            "daño_total": 0,
+            "curacion_total": 0,
+            "daño_por_unidad": {},
+        }
 
     # ------------------------------------------------------------------
     # Gestión de unidades
@@ -154,6 +159,9 @@ class CampoBatalla:
             if dist <= unidad.alcance:
                 daño = objetivo.recibir_daño(unidad.ataque)
                 self._estadisticas["daño_total"] += daño
+                self._estadisticas["daño_por_unidad"][unidad] = (
+                    self._estadisticas["daño_por_unidad"].get(unidad, 0) + daño
+                )
                 acciones.append(
                     {
                         "tipo": "atacar",
@@ -205,5 +213,6 @@ class CampoBatalla:
 
     def obtener_estadisticas(self) -> dict:
         """Devuelve un resumen de la simulación realizada."""
-
-        return dict(self._estadisticas)
+        stats = dict(self._estadisticas)
+        stats["daño_por_unidad"] = dict(self._estadisticas["daño_por_unidad"])
+        return stats
