@@ -411,9 +411,50 @@ class Juego:
                         self.boton_batalla.texto = "Batalla"
                         self.boton_batalla.accion = self.iniciar_batalla
                         self.simulando = False
+                        self.mostrar_reporte()
         elif self.estado == "exploracion":
             teclas = pygame.key.get_pressed()
             self.jugador.mover(teclas, self.terreno)
+
+    def mostrar_reporte(self, ruta: str = "reporte_batalla.txt") -> None:
+        """Limpia la pantalla y muestra el contenido del reporte de batalla.
+
+        Permite volver al menú principal o salir del juego presionando las
+        teclas indicadas.
+        """
+
+        try:
+            with open(ruta, "r", encoding="utf-8") as archivo:
+                lineas = archivo.readlines()
+        except FileNotFoundError:
+            lineas = ["Reporte no encontrado."]
+
+        fuente = pygame.font.Font(None, 36)
+        mostrando = True
+        while mostrando and self.corriendo:
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    self.corriendo = False
+                    return
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key in (pygame.K_m, pygame.K_ESCAPE, pygame.K_RETURN):
+                        mostrando = False
+                    elif evento.key == pygame.K_q:
+                        self.corriendo = False
+                        return
+
+            self.pantalla.fill((0, 0, 0))
+            y = 20
+            for linea in lineas:
+                texto = fuente.render(linea.strip(), True, (255, 255, 255))
+                self.pantalla.blit(texto, (20, y))
+                y += 30
+            instrucciones = fuente.render(
+                "Presiona M para menú o Q para salir", True, (255, 255, 0)
+            )
+            self.pantalla.blit(instrucciones, (20, y + 20))
+            pygame.display.flip()
+            self.reloj.tick(30)
 
     def dibujar(self):
         self.superficie_juego.fill((0, 0, 0))
