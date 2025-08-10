@@ -392,6 +392,8 @@ class Juego:
                             ganadores.append("Ejército A")
                         if self.ejercito_b.unidades:
                             ganadores.append("Ejército B")
+                        daños = estadisticas.get("daño_por_unidad", {})
+                        unidad_mvp = max(daños, key=daños.get) if daños else None
                         with open("reporte_batalla.txt", "w", encoding="utf-8") as reporte:
                             reporte.write(
                                 "Ganadores: "
@@ -401,11 +403,19 @@ class Juego:
                             reporte.write(
                                 f"Turnos totales: {estadisticas.get('turno_actual', 0)}\n\n"
                             )
-                            reporte.write("Resumen por unidad:\n")
-                            for unidad in self.campo.unidades():
+                            if unidad_mvp:
                                 reporte.write(
-                                    f"- {unidad.__class__.__name__} (ID {unidad.id}) - Salud: {unidad.salud}\n"
+                                    "MVP: "
+                                    f"{unidad_mvp.__class__.__name__} (ID {unidad_mvp.id}) - Daño infligido: {daños[unidad_mvp]}\n\n"
                                 )
+                            reporte.write("Resumen por unidad:\n")
+                            for unidad, daño in daños.items():
+                                linea = (
+                                    f"- {unidad.__class__.__name__} (ID {unidad.id}) - Salud: {unidad.salud} - Daño infligido: {daño}"
+                                )
+                                if unidad is unidad_mvp:
+                                    linea += " (MVP)"
+                                reporte.write(linea + "\n")
 
                         self.estado = "exploracion"
                         self.boton_batalla.texto = "Batalla"
@@ -446,7 +456,10 @@ class Juego:
             self.pantalla.fill((0, 0, 0))
             y = 20
             for linea in lineas:
-                texto = fuente.render(linea.strip(), True, (255, 255, 255))
+                color = (255, 255, 255)
+                if linea.startswith("MVP") or "(MVP)" in linea:
+                    color = (255, 215, 0)
+                texto = fuente.render(linea.strip(), True, color)
                 self.pantalla.blit(texto, (20, y))
                 y += 30
             instrucciones = fuente.render(
