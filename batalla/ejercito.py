@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 
 from .unidad import (
     Unidad,
@@ -28,6 +29,15 @@ class Ejercito:
         """Elimina una unidad del ejército si está presente."""
         if unidad in self.unidades:
             self.unidades.remove(unidad)
+
+    def puntaje_total(self):
+        """Calcula el puntaje agregado del ejército.
+
+        El puntaje de cada unidad es la suma de su ataque, defensa y
+        salud. La suma de estos valores para todas las unidades ofrece una
+        medida simple de la fuerza total del ejército.
+        """
+        return sum(u.ataque + u.defensa + u.salud for u in self.unidades)
 
     def atacar(self, objetivo):
         """Ataca a una :class:`Unidad` o a otro :class:`Ejercito`.
@@ -110,3 +120,32 @@ def crear_ejercito(config):
             ejercito.agregar_unidad(clase_unidad())
 
     return ejercito
+
+
+def validar_balance(ejercito_a: Ejercito, ejercito_b: Ejercito, umbral: int = 100):
+    """Compara el puntaje de dos ejércitos.
+
+    Calcula la diferencia absoluta entre los puntajes totales de ``ejercito_a``
+    y ``ejercito_b``. Si la diferencia es mayor que ``umbral`` se emite una
+    advertencia para indicar un posible desbalance.
+
+    Parameters
+    ----------
+    ejercito_a, ejercito_b: Ejercito
+        Ejércitos a comparar.
+    umbral: int, optional
+        Diferencia máxima permitida antes de generar una advertencia.
+
+    Returns
+    -------
+    int
+        Valor absoluto de la diferencia de puntajes.
+    """
+
+    diferencia = abs(ejercito_a.puntaje_total() - ejercito_b.puntaje_total())
+    if diferencia > umbral:
+        warnings.warn(
+            f"Diferencia de puntaje {diferencia} supera el umbral {umbral}",
+            RuntimeWarning,
+        )
+    return diferencia
