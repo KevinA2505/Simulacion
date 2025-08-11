@@ -92,6 +92,16 @@ class CampoBatalla:
 
         return list(self._posiciones.keys())
 
+    def cola_iniciativa(self) -> List[Unidad]:
+        """Devuelve las unidades ordenadas por su ``velocidad``.
+
+        La lista resultante representa la cola de iniciativas donde las
+        unidades con mayor valor de ``velocidad`` actúan antes durante un
+        turno de simulación.
+        """
+
+        return sorted(self._posiciones.keys(), key=lambda u: u.velocidad, reverse=True)
+
     # ------------------------------------------------------------------
     # Simulación
     # ------------------------------------------------------------------
@@ -158,13 +168,13 @@ class CampoBatalla:
         )
 
     def resolver_curaciones(
-        self, ejercito_a: Ejercito, ejercito_b: Ejercito
+        self, ejercito_a: Ejercito, ejercito_b: Ejercito, orden: Iterable[Unidad]
     ) -> tuple[list[dict], Set[Unidad]]:
         """Gestiona las acciones de curación de las unidades de soporte."""
 
         acciones: list[dict] = []
         actuaron: Set[Unidad] = set()
-        for unidad in list(self.unidades()):
+        for unidad in orden:
             if not isinstance(unidad, Soporte) or not unidad.esta_viva():
                 continue
 
@@ -203,13 +213,14 @@ class CampoBatalla:
         self,
         ejercito_a: Ejercito,
         ejercito_b: Ejercito,
+        orden: Iterable[Unidad],
         unidades_excluidas: Set[Unidad],
     ) -> tuple[list[dict], Set[Unidad]]:
         """Resuelve los ataques de las unidades que no han actuado."""
 
         acciones: list[dict] = []
         actuaron: Set[Unidad] = set()
-        for unidad in list(self.unidades()):
+        for unidad in orden:
             if unidad in unidades_excluidas or not unidad.esta_viva():
                 continue
 
@@ -253,6 +264,7 @@ class CampoBatalla:
         self,
         ejercito_a: Ejercito,
         ejercito_b: Ejercito,
+        orden: Iterable[Unidad],
         unidades_excluidas: Set[Unidad],
     ) -> list[dict]:
         """Mueve las unidades restantes hacia su objetivo más cercano.
@@ -264,7 +276,7 @@ class CampoBatalla:
         """
 
         acciones: list[dict] = []
-        for unidad in list(self.unidades()):
+        for unidad in orden:
             if unidad in unidades_excluidas or not unidad.esta_viva():
                 continue
 
@@ -333,16 +345,18 @@ class CampoBatalla:
                 self.eliminar_unidad(unidad)
                 ejercito_a.eliminar_unidad(unidad)
                 ejercito_b.eliminar_unidad(unidad)
+        # Cola de iniciativas basada en la velocidad de las unidades
+        orden = self.cola_iniciativa()
 
-        curaciones, actuaron = self.resolver_curaciones(ejercito_a, ejercito_b)
+        curaciones, actuaron = self.resolver_curaciones(ejercito_a, ejercito_b, orden)
         acciones.extend(curaciones)
         ataques, atacantes = self.resolver_ataques(
-            ejercito_a, ejercito_b, actuaron
+            ejercito_a, ejercito_b, orden, actuaron
         )
         acciones.extend(ataques)
         actuaron.update(atacantes)
         movimientos = self.resolver_movimientos(
-            ejercito_a, ejercito_b, actuaron
+            ejercito_a, ejercito_b, orden, actuaron
         )
         acciones.extend(movimientos)
 
