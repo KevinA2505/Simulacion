@@ -7,7 +7,7 @@ from typing import Dict, Iterable, Tuple, Set, List
 
 from terreno import Terreno
 
-from .unidad import Unidad, Soporte
+from .unidad import Unidad
 from .ejercito import Ejercito
 
 
@@ -170,12 +170,13 @@ class CampoBatalla:
     def resolver_curaciones(
         self, ejercito_a: Ejercito, ejercito_b: Ejercito, orden: Iterable[Unidad]
     ) -> tuple[list[dict], Set[Unidad]]:
-        """Gestiona las acciones de curación de las unidades de soporte."""
+        """Gestiona las acciones de curación de las unidades."""
 
         acciones: list[dict] = []
         actuaron: Set[Unidad] = set()
         for unidad in orden:
-            if not isinstance(unidad, Soporte) or not unidad.esta_viva():
+            accion_curar = unidad.acciones.get("curar")
+            if accion_curar is None or not unidad.esta_viva():
                 continue
 
             aliados = (
@@ -193,7 +194,7 @@ class CampoBatalla:
             ux, uy = self.posicion(unidad)
             ax, ay = self.posicion(aliado)
             if abs(ux - ax) + abs(uy - ay) <= unidad.alcance:
-                cantidad = unidad.curar(aliado)
+                cantidad = accion_curar.ejecutar(aliado)
                 self._estadisticas["curacion_total"] += cantidad
                 acciones.append(
                     {
@@ -237,7 +238,10 @@ class CampoBatalla:
             if dist > unidad.alcance:
                 continue
 
-            daño = objetivo.recibir_daño(unidad.ataque)
+            accion_atacar = unidad.acciones.get("atacar")
+            if accion_atacar is None:
+                continue
+            daño = accion_atacar.ejecutar(objetivo)
             self._estadisticas["daño_total"] += daño
             self._estadisticas["daño_por_unidad"][unidad] = (
                 self._estadisticas["daño_por_unidad"].get(unidad, 0) + daño
