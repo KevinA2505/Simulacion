@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Dict, Iterable, Tuple, Set
+from typing import Dict, Iterable, Tuple, Set, List
 
 from terreno import Terreno
 
@@ -36,6 +36,9 @@ class CampoBatalla:
             "daño_por_unidad": {},
         }
         self._replay: list[dict] = []
+        # Caché de rutas calculadas por unidad. Cada entrada almacena la
+        # posición de destino y la lista de pasos pendientes para alcanzarlo.
+        self._ruta_cache: Dict[Unidad, Tuple[Tuple[int, int], List[Tuple[int, int]]]] = {}
 
     # ------------------------------------------------------------------
     # Gestión de unidades
@@ -77,6 +80,7 @@ class CampoBatalla:
             x, y = pos
             self._grid[y][x] = None
         self._salud_max.pop(unidad, None)
+        self._ruta_cache.pop(unidad, None)
 
     def posicion(self, unidad: Unidad) -> Tuple[int, int]:
         """Devuelve la posición actual de una unidad."""
@@ -91,6 +95,61 @@ class CampoBatalla:
     # ------------------------------------------------------------------
     # Simulación
     # ------------------------------------------------------------------
+
+    def _buscar_camino(
+        self, origen: Tuple[int, int], destino: Tuple[int, int]
+    ) -> List[Tuple[int, int]] | None:
+        """Calcula un camino entre dos puntos evitando obstáculos y unidades.
+
+        Se utiliza el algoritmo A* considerando como no transitables tanto
+        las celdas marcadas en el terreno como las ocupadas por otras
+        unidades (excepto el propio destino, que puede contener un enemigo).
+        Devuelve una lista de coordenadas ``[(x, y), ...]`` que incluyen el
+        origen y el destino. Si no existe camino, retorna ``None``.
+        """
+
+        from heapq import heappush, heappop
+
+        if origen == destino:
+            return [origen]
+
+        def heuristica(a: Tuple[int, int], b: Tuple[int, int]) -> int:
+            return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+        abiertos: List[Tuple[int, Tuple[int, int]]] = []
+        heappush(abiertos, (0, origen))
+        came_from: Dict[Tuple[int, int], Tuple[int, int]] = {}
+        g_score: Dict[Tuple[int, int], int] = {origen: 0}
+
+        while abiertos:
+            _, actual = heappop(abiertos)
+            if actual == destino:
+                camino = [actual]
+                while actual in came_from:
+                    actual = came_from[actual]
+                    camino.append(actual)
+                camino.reverse()
+                return camino
+
+            x, y = actual
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if not (0 <= nx < self.ancho and 0 <= ny < self.alto):
+                    continue
+                if not self.es_transitable(nx, ny):
+                    continue
+                if self._grid[ny][nx] is not None and (nx, ny) != destino:
+                    continue
+
+                vecino = (nx, ny)
+                tentativo = g_score[actual] + 1
+                if tentativo < g_score.get(vecino, float("inf")):
+                    came_from[vecino] = actual
+                    g_score[vecino] = tentativo
+                    f_score = tentativo + heuristica(vecino, destino)
+                    heappush(abiertos, (f_score, vecino))
+
+        return None
     def _objetivo_cercano(self, unidad: Unidad, candidatos: Iterable[Unidad]) -> Unidad:
         ux, uy = self.posicion(unidad)
         return min(
@@ -196,7 +255,13 @@ class CampoBatalla:
         ejercito_b: Ejercito,
         unidades_excluidas: Set[Unidad],
     ) -> list[dict]:
-        """Mueve las unidades restantes hacia su objetivo más cercano."""
+        """Mueve las unidades restantes hacia su objetivo más cercano.
+
+        Cada unidad calcula una ruta completa mediante búsqueda de caminos y
+        avanza un único paso siguiendo dicha ruta. Las rutas se almacenan en
+        una caché para reutilizarlas entre turnos mientras sigan siendo
+        válidas.
+        """
 
         acciones: list[dict] = []
         for unidad in list(self.unidades()):
@@ -209,31 +274,44 @@ class CampoBatalla:
             enemigos = [e for e in enemigos if e.esta_viva()]
             if not enemigos:
                 continue
-            objetivo = self._objetivo_cercano(unidad, enemigos)
-            ux, uy = self.posicion(unidad)
-            ox, oy = self.posicion(objetivo)
 
-            dx = 1 if ox > ux else -1 if ox < ux else 0
-            dy = 1 if oy > uy else -1 if oy < uy else 0
-            if dx and self.mover_unidad(unidad, dx, 0):
+            objetivo = self._objetivo_cercano(unidad, enemigos)
+            destino = self.posicion(objetivo)
+            actual = self.posicion(unidad)
+
+            # Recuperar o calcular la ruta hacia el objetivo
+            cache = self._ruta_cache.get(unidad)
+            if not cache or cache[0] != destino or not cache[1]:
+                ruta = self._buscar_camino(actual, destino)
+                if ruta and len(ruta) > 1:
+                    ruta = ruta[1:]  # Excluir la posición actual
+                    self._ruta_cache[unidad] = (destino, ruta)
+                else:
+                    self._ruta_cache.pop(unidad, None)
+                    continue
+
+            destino_cache, ruta = self._ruta_cache[unidad]
+            siguiente = ruta[0]
+            dx = siguiente[0] - actual[0]
+            dy = siguiente[1] - actual[1]
+
+            if self.mover_unidad(unidad, dx, dy):
                 acciones.append(
                     {
                         "tipo": "mover",
                         "unidad": unidad,
-                        "origen": (ux, uy),
-                        "destino": (ux + dx, uy),
+                        "origen": actual,
+                        "destino": (actual[0] + dx, actual[1] + dy),
                     }
                 )
-                continue
-            if dy and self.mover_unidad(unidad, 0, dy):
-                acciones.append(
-                    {
-                        "tipo": "mover",
-                        "unidad": unidad,
-                        "origen": (ux, uy),
-                        "destino": (ux, uy + dy),
-                    }
-                )
+                ruta.pop(0)
+                if ruta:
+                    self._ruta_cache[unidad] = (destino_cache, ruta)
+                else:
+                    self._ruta_cache.pop(unidad, None)
+            else:
+                # Si el movimiento falla (p.ej., celda ocupada), recalcular ruta
+                self._ruta_cache.pop(unidad, None)
 
         return acciones
 
