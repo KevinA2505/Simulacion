@@ -2,6 +2,15 @@
 
 from uuid import uuid4
 
+from .acciones import (
+    AccionAtaque,
+    AccionCurar,
+    AccionFortificar,
+    AccionDisparoPreciso,
+    AccionCargar,
+    AccionProteger,
+)
+
 
 class Unidad:
     """Representa una unidad de combate básica.
@@ -18,6 +27,8 @@ class Unidad:
         self.defensa = defensa
         self.velocidad = velocidad
         self.alcance = alcance
+        # Acciones disponibles por la unidad. Por defecto todas pueden atacar.
+        self.acciones = {"atacar": AccionAtaque(self)}
 
     def recibir_daño(self, daño):
         """Aplica daño a la unidad considerando su defensa."""
@@ -37,10 +48,7 @@ class Infanteria(Unidad):
         super().__init__(
             salud=100, ataque=10, defensa=5, velocidad=4, alcance=1, id=id
         )
-
-    def fortificar(self):
-        """Aumenta la defensa temporalmente."""
-        self.defensa += 2
+        self.acciones["fortificar"] = AccionFortificar(self)
 
 
 class Arqueria(Unidad):
@@ -50,11 +58,7 @@ class Arqueria(Unidad):
         super().__init__(
             salud=80, ataque=12, defensa=3, velocidad=4, alcance=5, id=id
         )
-
-    def disparo_preciso(self, objetivo: Unidad):
-        """Ataque que ignora la defensa del objetivo."""
-        objetivo.salud -= self.ataque
-        return self.ataque
+        self.acciones["disparo_preciso"] = AccionDisparoPreciso(self)
 
 
 class Caballeria(Unidad):
@@ -64,11 +68,7 @@ class Caballeria(Unidad):
         super().__init__(
             salud=120, ataque=14, defensa=4, velocidad=8, alcance=1, id=id
         )
-
-    def cargar(self, objetivo: Unidad):
-        """Ataque de carga con daño aumentado."""
-        daño = self.ataque * 2
-        return objetivo.recibir_daño(daño)
+        self.acciones["cargar"] = AccionCargar(self)
 
 
 class Defensa(Unidad):
@@ -78,10 +78,7 @@ class Defensa(Unidad):
         super().__init__(
             salud=150, ataque=6, defensa=12, velocidad=3, alcance=1, id=id
         )
-
-    def proteger(self, aliado: Unidad):
-        """Incrementa la defensa de un aliado."""
-        aliado.defensa += 3
+        self.acciones["proteger"] = AccionProteger(self)
 
 
 class Soporte(Unidad):
@@ -91,9 +88,4 @@ class Soporte(Unidad):
         super().__init__(
             salud=70, ataque=4, defensa=3, velocidad=5, alcance=1, id=id
         )
-
-    def curar(self, aliado: Unidad):
-        """Restaura salud a un aliado."""
-        curacion = 10
-        aliado.salud += curacion
-        return curacion
+        self.acciones["curar"] = AccionCurar(self)
