@@ -20,8 +20,9 @@ class Juego:
         pygame.display.set_caption("Generador de Terreno 2D")
         self.reloj = pygame.time.Clock()
 
-        self.ancho_tiles = const.ANCHO // const.TAM_CELDA
-        self.alto_tiles = self.ancho_tiles
+        tamaño_base = const.ANCHO // const.TAM_CELDA
+        self.ancho_tiles = tamaño_base * const.FACTOR_MAPA
+        self.alto_tiles = tamaño_base * const.FACTOR_MAPA
         self.densidad = 0.1
         self.densidad_bosque = 0.1
         self.num_rios = 1
