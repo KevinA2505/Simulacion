@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, Tuple, Set
 
 from terreno import Terreno
 
@@ -98,24 +98,60 @@ class CampoBatalla:
             key=lambda u: abs(self.posicion(u)[0] - ux) + abs(self.posicion(u)[1] - uy),
         )
 
-    def simular_turno(self, ejercito_a: Ejercito, ejercito_b: Ejercito) -> list[dict]:
-        """Avanza un turno completo para ambos ejércitos.
-
-        Devuelve una lista de acciones realizadas durante el turno. Cada
-        acción es un diccionario con una clave ``"tipo"`` que puede tomar los
-        valores ``"mover"``, ``"atacar"`` o ``"curar"`` y otros campos
-        relacionados con la acción.
-        """
+    def resolver_curaciones(
+        self, ejercito_a: Ejercito, ejercito_b: Ejercito
+    ) -> tuple[list[dict], Set[Unidad]]:
+        """Gestiona las acciones de curación de las unidades de soporte."""
 
         acciones: list[dict] = []
-        self._estadisticas["turno_actual"] += 1
-
+        actuaron: Set[Unidad] = set()
         for unidad in list(self.unidades()):
-            if not unidad.esta_viva():
-                # Limpiamos la unidad caída del campo de batalla
-                self.eliminar_unidad(unidad)
-                ejercito_a.eliminar_unidad(unidad)
-                ejercito_b.eliminar_unidad(unidad)
+            if not isinstance(unidad, Soporte) or not unidad.esta_viva():
+                continue
+
+            aliados = (
+                ejercito_a.unidades if unidad in ejercito_a.unidades else ejercito_b.unidades
+            )
+            heridos = [
+                a
+                for a in aliados
+                if a.esta_viva() and a.salud < self._salud_max.get(a, a.salud)
+            ]
+            if not heridos:
+                continue
+
+            aliado = self._objetivo_cercano(unidad, heridos)
+            ux, uy = self.posicion(unidad)
+            ax, ay = self.posicion(aliado)
+            if abs(ux - ax) + abs(uy - ay) <= unidad.alcance:
+                cantidad = unidad.curar(aliado)
+                self._estadisticas["curacion_total"] += cantidad
+                acciones.append(
+                    {
+                        "tipo": "curar",
+                        "unidad": unidad,
+                        "objetivo": aliado,
+                        "origen": (ux, uy),
+                        "destino": (ax, ay),
+                        "cantidad": cantidad,
+                    }
+                )
+                actuaron.add(unidad)
+
+        return acciones, actuaron
+
+    def resolver_ataques(
+        self,
+        ejercito_a: Ejercito,
+        ejercito_b: Ejercito,
+        unidades_excluidas: Set[Unidad],
+    ) -> tuple[list[dict], Set[Unidad]]:
+        """Resuelve los ataques de las unidades que no han actuado."""
+
+        acciones: list[dict] = []
+        actuaron: Set[Unidad] = set()
+        for unidad in list(self.unidades()):
+            if unidad in unidades_excluidas or not unidad.esta_viva():
                 continue
 
             enemigos = (
@@ -128,59 +164,55 @@ class CampoBatalla:
             ux, uy = self.posicion(unidad)
             ox, oy = self.posicion(objetivo)
             dist = abs(ux - ox) + abs(uy - oy)
-
-            # Acción de soporte
-            if isinstance(unidad, Soporte):
-                aliados = (
-                    ejercito_a.unidades if unidad in ejercito_a.unidades else ejercito_b.unidades
-                )
-                heridos = [
-                    a
-                    for a in aliados
-                    if a.esta_viva() and a.salud < self._salud_max.get(a, a.salud)
-                ]
-                if heridos:
-                    aliado = self._objetivo_cercano(unidad, heridos)
-                    ax, ay = self.posicion(aliado)
-                    if abs(ux - ax) + abs(uy - ay) <= unidad.alcance:
-                        cantidad = unidad.curar(aliado)
-                        self._estadisticas["curacion_total"] += cantidad
-                        acciones.append(
-                            {
-                                "tipo": "curar",
-                                "unidad": unidad,
-                                "objetivo": aliado,
-                                "origen": (ux, uy),
-                                "destino": (ax, ay),
-                                "cantidad": cantidad,
-                            }
-                        )
-                        continue
-
-            # Ataque si está en alcance
-            if dist <= unidad.alcance:
-                daño = objetivo.recibir_daño(unidad.ataque)
-                self._estadisticas["daño_total"] += daño
-                self._estadisticas["daño_por_unidad"][unidad] = (
-                    self._estadisticas["daño_por_unidad"].get(unidad, 0) + daño
-                )
-                acciones.append(
-                    {
-                        "tipo": "atacar",
-                        "unidad": unidad,
-                        "objetivo": objetivo,
-                        "origen": (ux, uy),
-                        "destino": (ox, oy),
-                        "daño": daño,
-                    }
-                )
-                if not objetivo.esta_viva():
-                    self.eliminar_unidad(objetivo)
-                    ejercito_a.eliminar_unidad(objetivo)
-                    ejercito_b.eliminar_unidad(objetivo)
+            if dist > unidad.alcance:
                 continue
 
-            # Movimiento básico hacia el objetivo
+            daño = objetivo.recibir_daño(unidad.ataque)
+            self._estadisticas["daño_total"] += daño
+            self._estadisticas["daño_por_unidad"][unidad] = (
+                self._estadisticas["daño_por_unidad"].get(unidad, 0) + daño
+            )
+            acciones.append(
+                {
+                    "tipo": "atacar",
+                    "unidad": unidad,
+                    "objetivo": objetivo,
+                    "origen": (ux, uy),
+                    "destino": (ox, oy),
+                    "daño": daño,
+                }
+            )
+            if not objetivo.esta_viva():
+                self.eliminar_unidad(objetivo)
+                ejercito_a.eliminar_unidad(objetivo)
+                ejercito_b.eliminar_unidad(objetivo)
+            actuaron.add(unidad)
+
+        return acciones, actuaron
+
+    def resolver_movimientos(
+        self,
+        ejercito_a: Ejercito,
+        ejercito_b: Ejercito,
+        unidades_excluidas: Set[Unidad],
+    ) -> list[dict]:
+        """Mueve las unidades restantes hacia su objetivo más cercano."""
+
+        acciones: list[dict] = []
+        for unidad in list(self.unidades()):
+            if unidad in unidades_excluidas or not unidad.esta_viva():
+                continue
+
+            enemigos = (
+                ejercito_b.unidades if unidad in ejercito_a.unidades else ejercito_a.unidades
+            )
+            enemigos = [e for e in enemigos if e.esta_viva()]
+            if not enemigos:
+                continue
+            objetivo = self._objetivo_cercano(unidad, enemigos)
+            ux, uy = self.posicion(unidad)
+            ox, oy = self.posicion(objetivo)
+
             dx = 1 if ox > ux else -1 if ox < ux else 0
             dy = 1 if oy > uy else -1 if oy < uy else 0
             if dx and self.mover_unidad(unidad, dx, 0):
@@ -202,6 +234,39 @@ class CampoBatalla:
                         "destino": (ux, uy + dy),
                     }
                 )
+
+        return acciones
+
+    def simular_turno(self, ejercito_a: Ejercito, ejercito_b: Ejercito) -> list[dict]:
+        """Avanza un turno completo para ambos ejércitos.
+
+        Devuelve una lista de acciones realizadas durante el turno. Cada
+        acción es un diccionario con una clave ``"tipo"`` que puede tomar los
+        valores ``"mover"``, ``"atacar"`` o ``"curar"`` y otros campos
+        relacionados con la acción.
+        """
+
+        acciones: list[dict] = []
+        self._estadisticas["turno_actual"] += 1
+
+        # Limpiar unidades que hayan muerto en turnos previos
+        for unidad in list(self.unidades()):
+            if not unidad.esta_viva():
+                self.eliminar_unidad(unidad)
+                ejercito_a.eliminar_unidad(unidad)
+                ejercito_b.eliminar_unidad(unidad)
+
+        curaciones, actuaron = self.resolver_curaciones(ejercito_a, ejercito_b)
+        acciones.extend(curaciones)
+        ataques, atacantes = self.resolver_ataques(
+            ejercito_a, ejercito_b, actuaron
+        )
+        acciones.extend(ataques)
+        actuaron.update(atacantes)
+        movimientos = self.resolver_movimientos(
+            ejercito_a, ejercito_b, actuaron
+        )
+        acciones.extend(movimientos)
 
         self._replay.append(
             {
