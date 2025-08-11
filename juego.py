@@ -76,6 +76,8 @@ class Juego:
         self.acciones: list[dict] = []
         self.pausado = False
         self.avanzar_un_turno = False
+        self.ultimo_turno = 0
+        self.intervalo_turno = 500  # milisegundos entre turnos
 
     # ------------------------------------------------------------------
     # Métodos de utilidades
@@ -195,6 +197,7 @@ class Juego:
 
         pygame.event.get()
         self.simulando = True
+        self.ultimo_turno = pygame.time.get_ticks()
 
     def comenzar_combate(self):
         """Método obsoleto mantenido por compatibilidad."""
@@ -372,49 +375,52 @@ class Juego:
                         if not self.acciones and self.avanzar_un_turno and self.pausado:
                             self.avanzar_un_turno = False
                 elif not self.pausado or self.avanzar_un_turno:
-                    self.acciones = self.campo.simular_turno(
-                        self.ejercito_a, self.ejercito_b
-                    )
-                    if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
-                        # Obtener estadísticas finales del combate y generar reporte
-                        estadisticas = self.campo.obtener_estadisticas()
-                        ganadores = []
-                        if self.ejercito_a.unidades:
-                            ganadores.append("Ejército A")
-                        if self.ejercito_b.unidades:
-                            ganadores.append("Ejército B")
-                        daños = estadisticas.get("daño_por_unidad", {})
-                        unidad_mvp = max(daños, key=daños.get) if daños else None
-                        with open("reporte_batalla.txt", "w", encoding="utf-8") as reporte:
-                            reporte.write(
-                                "Ganadores: "
-                                + (", ".join(ganadores) if ganadores else "Empate")
-                                + "\n"
-                            )
-                            reporte.write(
-                                f"Turnos totales: {estadisticas.get('turno_actual', 0)}\n\n"
-                            )
-                            if unidad_mvp:
+                    ahora = pygame.time.get_ticks()
+                    if self.avanzar_un_turno or ahora - self.ultimo_turno >= self.intervalo_turno:
+                        self.acciones = self.campo.simular_turno(
+                            self.ejercito_a, self.ejercito_b
+                        )
+                        self.ultimo_turno = ahora
+                        if not self.ejercito_a.unidades or not self.ejercito_b.unidades:
+                            # Obtener estadísticas finales del combate y generar reporte
+                            estadisticas = self.campo.obtener_estadisticas()
+                            ganadores = []
+                            if self.ejercito_a.unidades:
+                                ganadores.append("Ejército A")
+                            if self.ejercito_b.unidades:
+                                ganadores.append("Ejército B")
+                            daños = estadisticas.get("daño_por_unidad", {})
+                            unidad_mvp = max(daños, key=daños.get) if daños else None
+                            with open("reporte_batalla.txt", "w", encoding="utf-8") as reporte:
                                 reporte.write(
-                                    "MVP: "
-                                    f"{unidad_mvp.__class__.__name__} (ID {unidad_mvp.id}) - Daño infligido: {daños[unidad_mvp]}\n\n"
+                                    "Ganadores: "
+                                    + (", ".join(ganadores) if ganadores else "Empate")
+                                    + "\n"
                                 )
-                            reporte.write("Resumen por unidad:\n")
-                            for unidad, daño in daños.items():
-                                linea = (
-                                    f"- {unidad.__class__.__name__} (ID {unidad.id}) - Salud: {unidad.salud} - Daño infligido: {daño}"
+                                reporte.write(
+                                    f"Turnos totales: {estadisticas.get('turno_actual', 0)}\n\n"
                                 )
-                                if unidad is unidad_mvp:
-                                    linea += " (MVP)"
-                                reporte.write(linea + "\n")
+                                if unidad_mvp:
+                                    reporte.write(
+                                        "MVP: "
+                                        f"{unidad_mvp.__class__.__name__} (ID {unidad_mvp.id}) - Daño infligido: {daños[unidad_mvp]}\n\n"
+                                    )
+                                reporte.write("Resumen por unidad:\n")
+                                for unidad, daño in daños.items():
+                                    linea = (
+                                        f"- {unidad.__class__.__name__} (ID {unidad.id}) - Salud: {unidad.salud} - Daño infligido: {daño}"
+                                    )
+                                    if unidad is unidad_mvp:
+                                        linea += " (MVP)"
+                                    reporte.write(linea + "\n")
 
-                        self.campo.exportar_replay("replay.json")
+                            self.campo.exportar_replay("replay.json")
 
-                        self.estado = "exploracion"
-                        self.boton_batalla.texto = "Batalla"
-                        self.boton_batalla.accion = self.iniciar_batalla
-                        self.simulando = False
-                        self.mostrar_reporte()
+                            self.estado = "exploracion"
+                            self.boton_batalla.texto = "Batalla"
+                            self.boton_batalla.accion = self.iniciar_batalla
+                            self.simulando = False
+                            self.mostrar_reporte()
         elif self.estado == "exploracion":
             teclas = pygame.key.get_pressed()
             self.jugador.mover(teclas, self.terreno)
