@@ -12,6 +12,9 @@ ALTO = ALTO_PANEL + ANCHO
 # Tamaño de cada celda de terreno (puede modificarse en tiempo de ejecución)
 TAM_CELDA = int(20 * 1.15)
 
+# Factor de escala para el tamaño inicial del mapa
+FACTOR_MAPA = 2
+
 # Colores utilizados en distintos elementos del juego
 COLOR_SUELO = (50, 50, 50)
 COLOR_PANEL = (200, 200, 200)
