@@ -30,7 +30,9 @@ class Jugador:
             (rect.right - 1, rect.bottom - 1),
         ]
         for px, py in puntos:
-            if self._bloque_en(px, py, terreno) in ("PARED", "HUECO"):
+            # Evita que el jugador atraviese cualquier bloque considerado
+            # no transitable dentro del terreno.
+            if self._bloque_en(px, py, terreno) in ("PARED", "HUECO", "AGUA"):
                 return True
         return False
 
